@@ -1,9 +1,17 @@
-import React from 'react'
+import NavbarHome from "@/component/user/NavbarHome";
+import HomePage from "@/component/home/HomePage";
 
-const page = () => {
+export default function Home() {
   return (
-    <div>page</div>
-  )
-}
+     <div className="p-2"> 
+     {/* NavBar */}
 
-export default page
+      {/* <div className="pt-20 px-6">
+        <NavbarHome/>
+      </div> */}
+      
+      <HomePage/>
+
+    </div>
+  );
+}
