@@ -20,6 +20,13 @@ module.exports = {
           secondary: '#B2B2B2', // Texto Secondary
         },
         details: '#E5E7EB', // Detalles
+        danger:
+        {
+          DEFAULT: '#EF4444', 
+          weak: '#dc2626',
+        }
+    //     --color-danger: #EF4444;
+    //      --color-danger-hover: #;
       }
     }
  },
