@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import TermsModal from "./notificacion/Terminos";
 import PrivacyModal from "./notificacion/Privacidad";
 import { useRouter } from "next/navigation";
+import { registerUser } from "@/services/registerUser";
 // import Cookies from "js-cookie";
 
 // interface FormData {
@@ -41,34 +42,13 @@ const FormInicioRegistro = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_RUTA_BACK}/auth/register-usuario`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(form),
-      });
-      // console.log("URL de la API:", `${process.env.NEXT_PUBLIC_RUTA_BACK}/auth/registro-usuario`);
-      // console.log("Datos enviados:", form); 
-  
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Registro exitoso de Usuario:", data);
-        // Guardar token en cookies
-        Cookies.set('token', data.token);
-        // Redirigir
-          router.push('/session/Acceso/Preferencias');
-      } else {
-        const errorData = await response.json();
-        console.error("Error en el registro:", errorData.message);
-        // Mostrar el error en UI
-        alert("Error en el registro: " + errorData.message);
-      }
-    }
-    catch (error) {
-      console.error("Error al registrar el usuario:", error);
+      const uid = await registerUser(form);
+      console.log("Usuario registrado con UID:", uid);
+      router.push("/user/home");
+    } catch (error) {
+      alert("Error al registrar el usuario: " + error.message);
     }
   };
 

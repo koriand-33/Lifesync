@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 // import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
+import { inicioSesion } from "@/services/inicioUser";
 
 const FormInicioSession = () => {
   const router = useRouter();
@@ -15,26 +16,20 @@ const FormInicioSession = () => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
-  
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ correo: form.email, password: form.password }),
-    });
-  
-    if (!res.ok) {
-      console.error('Error al iniciar sesión');
-      return;
-    }
-  
-    const data = await res.json();
-  
-    if (data.role === "proveedor") {
-      router.push("/Proveedor");
-    } else {
-      router.push("/Usuario/mapa");
+    try {
+      const userCredential = await inicioSesion(form.email, form.password);
+      const user = userCredential.user;
+
+      console.log("Usuario autenticado:", user);
+    // Espera una fracción de segundo para que onAuthStateChanged lo capture
+    setTimeout(() => {
+      router.push("/user/home");
+    }, 100); 
+    } catch (error) {
+      console.error("Error al iniciar sesión:", error.message);
+      alert("Correo o contraseña incorrectos");
     }
   };
   

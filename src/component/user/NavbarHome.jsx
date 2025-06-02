@@ -14,8 +14,13 @@ import {
 } from '@heroicons/react/24/solid';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+// cerrar sesion
+import { signOut } from "firebase/auth";
+import { useRouter } from 'next/navigation';
+import { auth } from '../../../conexion_BD/firebase';
 
 const Navbar = () => {
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
 
@@ -33,10 +38,16 @@ const Navbar = () => {
     { name: 'Perfil', href: '/user/profile', icon: UserIcon },
   ];
 
-  const cerrarSession = () => {
-    // Aquí puedes agregar la lógica para cerrar sesión
-    console.log('Cerrar sesión');
-  }
+    const cerrarSesion = () => {
+      signOut(auth)
+        .then(() => {
+          console.log("Sesión cerrada");
+          router.push("/session");
+        })
+        .catch((error) => {
+          console.error("Error al cerrar sesión:", error);
+        });
+    };
 
   return (
     <>
@@ -71,7 +82,7 @@ const Navbar = () => {
                 <ul className="flex items-center gap-8">
                   <li>
                     <button
-                      onClick={cerrarSession()}
+                      onClick={cerrarSesion}
                       className="p-3 bg-primary rounded-2xl cursor-pointer text-white"
                     >
                       Cerrar sesión
@@ -134,7 +145,7 @@ const Navbar = () => {
             <ul className="mt-4">
               <li className="flex py-3 w-full">
                 <button
-                  onClick={cerrarSession()}
+                  onClick={cerrarSesion}
                   className="flex justify-center items-center w-full px-4 py-2.5 text-sm rounded font-bold text-white bg-primary transition-colors cursor-pointer"
                 >
                   Cerrar sesión
