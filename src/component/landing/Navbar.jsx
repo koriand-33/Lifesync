@@ -64,7 +64,7 @@ const Navbar = () => {
                     <Link href="/session/Acceso?register=true"  className='cursor-pointer'>Registro</Link>
                   </li>
                   <li>
-                    <Link href="/session/Acceso" className='p-3 bg-primary rounded-2xl cursor-pointer text-white'>
+                    <Link href="/acceso" className='p-3 bg-primary rounded-2xl cursor-pointer text-white'>
                         Acceso
                     </Link>
                   </li>
@@ -149,13 +149,13 @@ const Navbar = () => {
                 </Link>
               </li>
               <li className='flex py-3 w-full'>
-                <Link href="/session/Acceso" className='flex justify-center items-center w-full px-4 py-2.5 text-sm rounded font-bold text-white bg-primary transition-colors cursor-pointer'>
+                <Link href="/acceso" className='flex justify-center items-center w-full px-4 py-2.5 text-sm rounded font-bold text-white bg-primary transition-colors cursor-pointer'>
                   Acceso
                 </Link>
               </li>
             </ul>
           </div>
-        </>
+          </>
       )}
     </>
   );

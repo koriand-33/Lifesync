@@ -13,7 +13,6 @@ export default function Home() {
       {/* parte principal de la landing */}
       <Principal/>
 
-
     </div>
   );
 }
