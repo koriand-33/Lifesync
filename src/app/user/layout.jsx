@@ -7,19 +7,15 @@ import Protegido from '@/hooks/Protegido';
 export default function UsuarioLayout({ children }) {
   return (
     <Protegido>
-      <div className="flex">
-        {/* Sidebar opcional */}
-        {/* <div className="sticky top-0 h-full z-5">
-          <Sidebar />
-        </div> */}
+      <div className="flex justify-center items-center">
 
         {/* Navbar */}
-        <div className="pt-20 px-6">
+        <div className="pt-20">
           <NavbarHome />
         </div>
 
         {/* Contenido principal */}
-        <div className="flex-1 overflow-auto mt-20">
+        <div className="flex mt-24 w-full items-center justify-center">
           {children}
         </div>
       </div>

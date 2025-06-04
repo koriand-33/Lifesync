@@ -10,6 +10,26 @@ const FormInicioSession = () => {
     email: "",
     password: "",
   });
+  const [resetEmail, setResetEmail] = useState("");
+  const [showResetForm, setShowResetForm] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
+
+
+  const handleResetPassword = async (e) => {
+  e.preventDefault();
+  try {
+    await sendPasswordResetEmail(auth, resetEmail);
+    setResetMessage("Se ha enviado un correo para restablecer tu contraseña. Revisa tu bandeja de entrada.");
+    setResetEmail("");
+    setTimeout(() => {
+      setShowResetForm(false);
+      setResetMessage("");
+    }, 5000);
+  } catch (error) {
+    console.error("Error al enviar correo de recuperación:", error.message);
+    setResetMessage("Error: " + error.message);
+  }
+};
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -91,6 +111,60 @@ const handleSubmit = async (e) => {
           Acceso
         </button>
       </form>
+
+{/* Olvidaste la contraseña */}
+      <div className="mt-4 text-center">
+        <button 
+          onClick={() => setShowResetForm(true)}
+          className="text-sm text-blue-400 hover:underline"
+        >
+          ¿Olvidaste tu contraseña?
+        </button>
+      </div>
+{/* formulario de restablecimiento de contraseña */}
+      {showResetForm && (
+        <div className="mt-6 p-4 bg-details rounded-lg border border-gray-700">
+          <h3 className="text-lg font-semibold mb-2">Restablecer contraseña</h3>
+          <form onSubmit={handleResetPassword}>
+            <label htmlFor="resetEmail" className="block text-sm mb-1">
+              Ingresa tu correo electrónico
+            </label>
+            <input
+              type="email"
+              id="resetEmail"
+              name="resetEmail"
+              placeholder="name@company.com"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              className="w-full p-2 rounded bg-details border border-gray-700 text-text mb-4"
+              required
+            />
+            <button
+              type="submit"
+              className="w-full bg-primary text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors cursor-pointer"
+            >
+              Enviar correo de recuperación
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowResetForm(false);
+                setResetMessage("");
+              }}
+              className="w-full mt-2 bg-gray-500 text-white py-2 px-4 rounded hover:bg-gray-600 transition-colors cursor-pointer"
+            >
+              Cancelar
+            </button>
+          </form>
+          {resetMessage && (
+            <p className={`mt-2 text-sm ${
+              resetMessage.includes("Error") ? "text-red-400" : "text-green-400"
+            }`}>
+              {resetMessage}
+            </p>
+          )}
+        </div>
+      )}
 
     </div>
 
