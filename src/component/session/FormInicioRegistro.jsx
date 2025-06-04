@@ -4,6 +4,8 @@ import TermsModal from "./notificacion/Terminos";
 import PrivacyModal from "./notificacion/Privacidad";
 import { useRouter } from "next/navigation";
 import { registerUser } from "@/services/registerUser";
+import { serverTimestamp } from "firebase/firestore";
+
 // import Cookies from "js-cookie";
 
 // interface FormData {
@@ -28,21 +30,26 @@ const FormInicioRegistro = () => {
     correo_viajero: "",
     pass_viajero: "",
     sexo_viajero: "",
-    fecha_nacimiento_viajero: "",
+    fecha_nacimiento_viajero: null,
     telefono_viajero: "",
+    fecha_registro: null,
+    fecha_actividad:null,
+    racha_actual: 1,
+    maxima_racha: 1,
   });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: type === "checkbox" ? checked :
+      name === "fecha_nacimiento_viajero" ? new Date(value) :
+      value,
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
       const uid = await registerUser(form);
       console.log("Usuario registrado con UID:", uid);
@@ -166,7 +173,7 @@ const FormInicioRegistro = () => {
           name="fecha_nacimiento_viajero"
           id="fecha_nacimiento_viajero"
           className="w-full p-2 rounded bg- border border-text text-text mb-4"
-          value={form.fecha_nacimiento_viajero}
+          value={form.fecha_nacimiento_viajero ? form.fecha_nacimiento_viajero.toISOString().split('T')[0] : ''}
           onChange={handleChange}
           min="1900-01-01"
           max={new Date().toISOString().split('T')[0]}
