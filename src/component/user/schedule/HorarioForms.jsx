@@ -1,6 +1,55 @@
 'use client';
 
 import React, { useState } from "react";
+import { subirHorario } from "@/services/subirHorario";
+import { auth } from "../../../../conexion_BD/firebase";
+
+function agruparActividadesPorDia(extrasPorDia) {
+  const actividadesPorDia = {
+    Lun: [],
+    Mar: [],
+    Mié: [],
+    Jue: [],
+    Vie: []
+  };
+
+  const paresActividades = [
+    { inicioKey: 'desayunoInicio', finKey: 'desayunoFin', actividad: 'Desayuno' },
+    { inicioKey: 'comidaInicio', finKey: 'comidaFin', actividad: 'Comida' },
+    { inicioKey: 'trayectoIdaInicio', finKey: 'trayectoIdaFin', actividad: 'Trayecto Ida' },
+    { inicioKey: 'trayectoVueltaInicio', finKey: 'trayectoVueltaFin', actividad: 'Trayecto Vuelta' }
+  ];
+
+  for (const dia in extrasPorDia) {
+    const extras = extrasPorDia[dia];
+
+    paresActividades.forEach(({ inicioKey, finKey, actividad }) => {
+      const inicio = extras[inicioKey];
+      const fin = extras[finKey];
+
+      if (inicio && fin) {
+        actividadesPorDia[dia].push({
+          actividad,
+          inicio,
+          fin
+        });
+      }
+    });
+
+    const despertar = extras.despertarse;
+    const dormir = extras.dormirse;
+
+    if (despertar && dormir) {
+      actividadesPorDia[dia].push({
+        actividad: 'Dormirse',
+        inicio: despertar,
+        fin: dormir
+      });
+    }
+  }
+
+  return actividadesPorDia;
+}
 
 const materiasIniciales = [
   { nombre: "Visión Artificial", color: "#facc15" },
@@ -108,7 +157,7 @@ export default function HorarioForms() {
   };
 
   // Validación al enviar
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     for (const dia of dias) {
       for (let { key, label } of camposFijos) {
@@ -118,9 +167,21 @@ export default function HorarioForms() {
         }
       }
     }
-    console.log("Extras por día:", extrasPorDia);
+    console.log("Materias:", materias);
     console.log("Horario enviado:", datos);
-    alert("Horario guardado en consola (ver DevTools)");
+    const extrasFormateadas = agruparActividadesPorDia(extrasPorDia);
+    console.log("Actividades extras organizadas por día:", extrasFormateadas);
+
+    const userId = auth.currentUser?.uid;
+      if (!userId) return;
+
+    try {
+      await subirHorario(userId, materias, datos, extrasFormateadas);
+      alert("¡Horario guardado correctamente en Firebase!");
+    } catch (error) {
+      console.error("Error al guardar en Firebase:", error);
+      alert("Hubo un error al guardar el horario. Inténtalo más tarde.");
+    }
   };
 
   return (
@@ -182,9 +243,10 @@ export default function HorarioForms() {
         <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
           <input
             type="text"
-            placeholder="Nueva materia"
+            placeholder="Aqui escribe el nombre de la nueva materia"
             value={nuevaMateria.nombre}
             maxLength={30}
+            className="p-2 rounded-md border border-gray-300"
             style={{ flex: 2, padding: "6px", fontSize: "14px" }}
             onChange={(e) =>
               setNuevaMateria((nm) => ({ ...nm, nombre: e.target.value }))
