@@ -75,24 +75,57 @@ const camposFijos = [
   { key: 'dormirse', label: 'Dormirse' }
 ];
 
-export default function HorarioForms() {
-  const [materias, setMaterias] = useState(materiasIniciales);
+export default function HorarioForms({ horarioExistente = null, onClose, onRefresh }) {
+
+  const [materias, setMaterias] = useState(() =>
+    horarioExistente?.materias
+      ? Object.entries(horarioExistente.materias).map(([nombre, { color }]) => ({ nombre, color }))
+      : materiasIniciales
+  );
   const [nuevaMateria, setNuevaMateria] = useState({ nombre: "", color: "#888888" });
 
   // Estado para actividades (solo seleccionables con materias)
   const [datos, setDatos] = useState(() =>
-    Object.fromEntries(dias.map((dia) => [dia, []]))
+    horarioExistente?.clases || Object.fromEntries(dias.map((dia) => [dia, []]))
   );
 
   // Estado para actividades fijas de cada día
-  const [extrasPorDia, setExtrasPorDia] = useState(() =>
-    Object.fromEntries(
+  const [extrasPorDia, setExtrasPorDia] = useState(() => {
+  if (!horarioExistente?.extras) {
+    return Object.fromEntries(
       dias.map((dia) => [
         dia,
         Object.fromEntries(camposFijos.map(c => [c.key, ""]))
       ])
-    )
-  );
+    );
+  }
+    // reconstruye extrasPorDia desde actividades agrupadas
+    const reconstruido = {};
+    for (const dia of dias) {
+      const diaExtras = horarioExistente.extras[dia] || [];
+      const extras = Object.fromEntries(camposFijos.map(c => [c.key, ""]));
+      for (const act of diaExtras) {
+        if (act.actividad === "Desayuno") {
+          extras.desayunoInicio = act.inicio;
+          extras.desayunoFin = act.fin;
+        } else if (act.actividad === "Comida") {
+          extras.comidaInicio = act.inicio;
+          extras.comidaFin = act.fin;
+        } else if (act.actividad === "Trayecto Ida") {
+          extras.trayectoIdaInicio = act.inicio;
+          extras.trayectoIdaFin = act.fin;
+        } else if (act.actividad === "Trayecto Vuelta") {
+          extras.trayectoVueltaInicio = act.inicio;
+          extras.trayectoVueltaFin = act.fin;
+        } else if (act.actividad === "Dormirse") {
+          extras.despertarse = act.inicio;
+          extras.dormirse = act.fin;
+        }
+      }
+      reconstruido[dia] = extras;
+    }
+    return reconstruido;
+  });
 
   // Manejo materias nuevas
   const agregarMateria = () => {
@@ -178,6 +211,8 @@ export default function HorarioForms() {
     try {
       await subirHorario(userId, materias, datos, extrasFormateadas);
       alert("¡Horario guardado correctamente en Firebase!");
+      onRefresh(); 
+      onClose();
     } catch (error) {
       console.error("Error al guardar en Firebase:", error);
       alert("Hubo un error al guardar el horario. Inténtalo más tarde.");

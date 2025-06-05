@@ -4,11 +4,15 @@ import { PlusCircleIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import HorarioForms from '@/component/user/schedule/HorarioForms';
 import { bajarHorario } from '@/services/bajarHorario';
 import { auth } from '../../../../conexion_BD/firebase';
+import HorarioVista from '@/component/user/schedule/HorarioVista';
+import Loading from '@/component/loading/loading';
 
 export default function Schedules() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [tieneHorario, setTieneHorario] = useState(false); // nuevo estado
+  const [tieneHorario, setTieneHorario] = useState(false);
+  const [horarioExistente, setHorarioExistente] = useState(null);
   const modalRef = useRef(null);
+  const [cargando, setCargando] = useState(true);
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
@@ -19,26 +23,38 @@ export default function Schedules() {
     }
   };
 
-  useEffect(() => {
-    const fetchHorario = async () => {
-      try {
-        const userId = auth.currentUser?.uid;
-        if (!userId) return;
-
-        const horario = await bajarHorario(userId);
-        if (horario) setTieneHorario(true);
-      } catch (error) {
-        console.error("Error al obtener el horario:", error);
+  const fetchHorario = async () => {
+    setCargando(true);
+    try {
+      const userId = auth.currentUser?.uid;
+      if (!userId) {
+        setCargando(false);
+        return;
       }
-    };
+      const horario = await bajarHorario(userId);
+      if (horario) {
+        setTieneHorario(true);
+        setHorarioExistente(horario);
+      } else {
+        setTieneHorario(false);
+        setHorarioExistente(null);
+      }
+    } catch (error) {
+      console.error("Error al obtener el horario:", error);
+    } finally {
+      setCargando(false);
+    }
+  };
 
+  useEffect(() => {
     fetchHorario();
   }, []);
 
+  if (cargando) return <Loading />;
+
   return (
     <div className="p-2 w-full">
-      {/* Ficha para agregar Horario */}
-      {!tieneHorario && (
+      {!tieneHorario ? (
         <div className='flex flex-col sm:flex-row m-10 items-center justify-center shadow-lg '>
           <div className='hidden sm:block w-1/4 justify-start items-center'>
             <img src="/scheadule/Horario.png" alt="empty schedule" className='w-1/2 h-auto mb-4' />
@@ -61,9 +77,10 @@ export default function Schedules() {
             </button>
           </div>
         </div>
+      ) : (
+        <HorarioVista horario={horarioExistente} onEditar={openModal} />
       )}
 
-      {/* Modal */}
       {isModalOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
@@ -79,7 +96,12 @@ export default function Schedules() {
             >
               <XMarkIcon className="h-6 w-6" />
             </button>
-            <HorarioForms />
+            {/* PASAMOS fetchHorario y closeModal */}
+            <HorarioForms 
+              horarioExistente={horarioExistente} 
+              onClose={closeModal} 
+              onRefresh={fetchHorario} 
+            />
           </div>
         </div>
       )}
