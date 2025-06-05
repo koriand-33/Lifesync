@@ -2,66 +2,73 @@
 
 import React, { useState } from "react";
 
-
-
-const materias = [
+const materiasIniciales = [
   { nombre: "Visión Artificial", color: "#facc15" },
   { nombre: "Teoría de la computación", color: "#ef4444" },
-  { nombre: "Procesamiento de señales", color: "#6b7280" },
+  { nombre: "Procesamiento de señales", color: "#3bcfd4" },
   { nombre: "Tecnologías de Lenguaje Natural", color: "#f59e0b" },
-  { nombre: "Algoritmos bioinspirados", color: "#a3a3a3" },
-  { nombre: "Aprendizaje Máquina", color: "#10b9a0" },
-  { nombre: "Otra", color: "#10b981" }
+  { nombre: "Algoritmos bioinspirados", color: "#133a94" },
+  { nombre: "Aprendizaje Máquina", color: "#10b9a0" }
 ];
 
 const dias = ["Lun", "Mar", "Mié", "Jue", "Vie"];
 
+const camposFijos = [
+  { key: 'despertarse', label: 'Despertarse' },
+  { key: 'desayunoInicio', label: 'Desayunar (inicio)' },
+  { key: 'desayunoFin', label: 'Desayunar (fin)' },
+  { key: 'comidaInicio', label: 'Comer (inicio)' },
+  { key: 'comidaFin', label: 'Comer (fin)' },
+  { key: "trayectoIdaInicio", label: 'Trayecto ida (inicio)' },
+  { key: "trayectoIdaFin", label: 'Trayecto ida (fin)' },
+  { key: "trayectoVueltaInicio", label: 'Trayecto vuelta (inicio)' },
+  { key: "trayectoVueltaFin", label: 'Trayecto vuelta (fin)' },
+  { key: 'dormirse', label: 'Dormirse' }
+];
 
 export default function HorarioForms() {
-  // Estado para actividades
-  // const [datos, setDatos] = useState(() =>
-  //   Object.fromEntries(
-  //     dias.map((dia) => [
-  //       dia,
-  //       [
-  //         {
-  //           materia: "",
-  //           accion: "",
-  //           horaInicio: "",
-  //           horaFin: ""
-  //         }
-  //       ]
-  //     ])
-  //   )
-  // );
+  const [materias, setMaterias] = useState(materiasIniciales);
+  const [nuevaMateria, setNuevaMateria] = useState({ nombre: "", color: "#888888" });
+
+  // Estado para actividades (solo seleccionables con materias)
   const [datos, setDatos] = useState(() =>
-  Object.fromEntries(
-      dias.map((dia) => [dia, []])
-    )
+    Object.fromEntries(dias.map((dia) => [dia, []]))
   );
 
-  // Estado para campos extras por día
+  // Estado para actividades fijas de cada día
   const [extrasPorDia, setExtrasPorDia] = useState(() =>
     Object.fromEntries(
       dias.map((dia) => [
         dia,
-        {
-          trayectoIdaInicio: "",
-          trayectoIdaFin: "",
-          trayectoVueltaInicio: "",
-          trayectoVueltaFin: "",
-          desayunoInicio: "",
-          desayunoFin: "",
-          comidaInicio: "",
-          comidaFin: "",
-          despertarse: "",
-          dormirse: ""
-        }
+        Object.fromEntries(camposFijos.map(c => [c.key, ""]))
       ])
     )
   );
 
-  // Maneja cambios en campos extras por día
+  // Manejo materias nuevas
+  const agregarMateria = () => {
+    if (
+      nuevaMateria.nombre.trim() &&
+      !materias.some((m) => m.nombre === nuevaMateria.nombre)
+    ) {
+      setMaterias((prev) => [...prev, nuevaMateria]);
+      setNuevaMateria({ nombre: "", color: "#888888" });
+    }
+  };
+
+  // Eliminar una materia agregada (y borrar actividades que usen esa materia)
+  const eliminarMateria = (nombreMateria) => {
+    setMaterias((prev) => prev.filter(m => m.nombre !== nombreMateria));
+    setDatos((prev) => {
+      const next = {};
+      for (const d in prev) {
+        next[d] = prev[d].filter(a => a.materia !== nombreMateria);
+      }
+      return next;
+    });
+  };
+
+  // Cambios en campos fijos de cada día
   const manejarCambioExtra = (dia, campo, valor) => {
     setExtrasPorDia((prev) => ({
       ...prev,
@@ -72,8 +79,8 @@ export default function HorarioForms() {
     }));
   };
 
-  // Maneja cambios en actividades
-  const manejarCambio = (dia, index, campo, valor) => {
+  // Cambios en actividades agregadas
+  const manejarCambioActividad = (dia, index, campo, valor) => {
     setDatos((prev) => {
       const actividadesDia = [...prev[dia]];
       actividadesDia[index] = {
@@ -84,11 +91,10 @@ export default function HorarioForms() {
     });
   };
 
-  // Agrega actividad a día dado
   const agregarActividad = (dia) => {
     setDatos((prev) => {
       const actividadesDia = [...prev[dia]];
-      actividadesDia.push({ materia: "", accion: "", horaInicio: "", horaFin: "" });
+      actividadesDia.push({ materia: "", horaInicio: "", horaFin: "" });
       return { ...prev, [dia]: actividadesDia };
     });
   };
@@ -104,27 +110,14 @@ export default function HorarioForms() {
   // Validación al enviar
   const handleSubmit = (e) => {
     e.preventDefault();
-
     for (const dia of dias) {
-      const extras = extrasPorDia[dia];
-
-      // Validar todos los campos de hora en extras
-      const camposHora = [
-        "trayectoIdaInicio", "trayectoIdaFin",
-        "trayectoVueltaInicio", "trayectoVueltaFin",
-        "desayunoInicio", "desayunoFin",
-        "comidaInicio", "comidaFin",
-        "despertarse", "dormirse"
-      ];
-
-      for (const campo of camposHora) {
-        if (!extras[campo]) {
-          alert(`Por favor completa el campo "${campo.replace(/([A-Z])/g, ' $1')}" en ${dia}.`);
+      for (let { key, label } of camposFijos) {
+        if (!extrasPorDia[dia][key]) {
+          alert(`Por favor completa el campo "${label}" en ${dia}.`);
           return;
         }
       }
     }
-
     console.log("Extras por día:", extrasPorDia);
     console.log("Horario enviado:", datos);
     alert("Horario guardado en consola (ver DevTools)");
@@ -145,7 +138,85 @@ export default function HorarioForms() {
       >
         Horario de clases y actividades
       </h2>
+      
+      {/* Bloques de materias existentes */}
+      <div style={{ marginBottom: "1.5rem" }}>
+        <h3 style={{ fontWeight: "bold", marginBottom: "0.75rem" }}>
+          Materias y actividades:
+        </h3>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+          {materias.map((m, i) => (
+            <div key={m.nombre} style={{
+              background: m.color,
+              minWidth: 110,
+              textAlign: "center",
+              padding: "0.7rem 1rem",
+              borderRadius: "1rem",
+              fontWeight: "600",
+              position: "relative"
+            }}>
+              {m.nombre}
+              {i >= materiasIniciales.length && (
+                <span
+                  title="Eliminar esta materia"
+                  onClick={() => eliminarMateria(m.nombre)}
+                  style={{
+                    position: "absolute",
+                    top: 5,
+                    right: 8,
+                    cursor: "pointer",
+                    color: "#c0392b",
+                    fontSize: "18px",
+                    lineHeight: "16px",
+                    fontWeight: "bold"
+                  }}
+                  tabIndex={0}
+                  role="button"
+                >
+                  ❌
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
+          <input
+            type="text"
+            placeholder="Nueva materia"
+            value={nuevaMateria.nombre}
+            maxLength={30}
+            style={{ flex: 2, padding: "6px", fontSize: "14px" }}
+            onChange={(e) =>
+              setNuevaMateria((nm) => ({ ...nm, nombre: e.target.value }))
+            }
+          />
+          <input
+            type="color"
+            value={nuevaMateria.color}
+            style={{ width: 38, height: 38, padding: 2, flex: "none", border: "none" }}
+            onChange={(e) =>
+              setNuevaMateria((nm) => ({ ...nm, color: e.target.value }))
+            }
+          />
+          <button
+            type="button"
+            onClick={agregarMateria}
+            style={{
+              backgroundColor: "#3b82f6",
+              color: "white",
+              border: "none",
+              padding: "0.5rem 1rem",
+              borderRadius: "10px",
+              cursor: "pointer",
+              fontWeight: "bold"
+            }}
+          >
+            + Agregar materia o actividad
+          </button>
+        </div>
+      </div>
 
+      {/* Horario por días */}
       {dias.map((dia) => (
         <fieldset
           key={dia}
@@ -156,214 +227,41 @@ export default function HorarioForms() {
             borderRadius: "8px"
           }}
         >
-          <legend style={{ fontWeight: "bold", fontSize: "18px" }}>{dia}</legend>
+          <legend style={{ fontWeight: "bold", fontSize: "18px" }}>
+            {dia}
+          </legend>
 
-          {/* Campos extras por día */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "1rem",
-              marginBottom: "1rem",
-              padding: "0.5rem",
-              border: "1px solid #ddd",
-              borderRadius: "6px"
-            }}
-          >
-            {/* Trayecto Ida */}
-            <div>
-              <strong>Trayecto Ida</strong>
-              <div style={{ display: "flex", gap: "1rem", marginTop: "0.25rem" }}>
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor={`${dia}-trayectoIdaInicio`}
-                    style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}
-                  >
-                    Hora inicio:
-                  </label>
-                  <input
-                    type="time"
-                    id={`${dia}-trayectoIdaInicio`}
-                    value={extrasPorDia[dia].trayectoIdaInicio}
-                    onChange={(e) => manejarCambioExtra(dia, "trayectoIdaInicio", e.target.value)}
-                    required
-                    style={{ width: "100%", padding: "6px", fontSize: "14px" }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor={`${dia}-trayectoIdaFin`}
-                    style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}
-                  >
-                    Hora fin:
-                  </label>
-                  <input
-                    type="time"
-                    id={`${dia}-trayectoIdaFin`}
-                    value={extrasPorDia[dia].trayectoIdaFin}
-                    onChange={(e) => manejarCambioExtra(dia, "trayectoIdaFin", e.target.value)}
-                    required
-                    style={{ width: "100%", padding: "6px", fontSize: "14px" }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Trayecto Vuelta */}
-            <div>
-              <strong>Trayecto Vuelta</strong>
-              <div style={{ display: "flex", gap: "1rem", marginTop: "0.25rem" }}>
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor={`${dia}-trayectoVueltaInicio`}
-                    style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}
-                  >
-                    Hora inicio:
-                  </label>
-                  <input
-                    type="time"
-                    id={`${dia}-trayectoVueltaInicio`}
-                    value={extrasPorDia[dia].trayectoVueltaInicio}
-                    onChange={(e) => manejarCambioExtra(dia, "trayectoVueltaInicio", e.target.value)}
-                    required
-                    style={{ width: "100%", padding: "6px", fontSize: "14px" }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor={`${dia}-trayectoVueltaFin`}
-                    style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}
-                  >
-                    Hora fin:
-                  </label>
-                  <input
-                    type="time"
-                    id={`${dia}-trayectoVueltaFin`}
-                    value={extrasPorDia[dia].trayectoVueltaFin}
-                    onChange={(e) => manejarCambioExtra(dia, "trayectoVueltaFin", e.target.value)}
-                    required
-                    style={{ width: "100%", padding: "6px", fontSize: "14px" }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Desayuno */}
-            <div>
-              <strong>Desayuno</strong>
-              <div style={{ display: "flex", gap: "1rem", marginTop: "0.25rem" }}>
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor={`${dia}-desayunoInicio`}
-                    style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}
-                  >
-                    Hora inicio:
-                  </label>
-                  <input
-                    type="time"
-                    id={`${dia}-desayunoInicio`}
-                    value={extrasPorDia[dia].desayunoInicio}
-                    onChange={(e) => manejarCambioExtra(dia, "desayunoInicio", e.target.value)}
-                    required
-                    style={{ width: "100%", padding: "6px", fontSize: "14px" }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor={`${dia}-desayunoFin`}
-                    style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}
-                  >
-                    Hora fin:
-                  </label>
-                  <input
-                    type="time"
-                    id={`${dia}-desayunoFin`}
-                    value={extrasPorDia[dia].desayunoFin}
-                    onChange={(e) => manejarCambioExtra(dia, "desayunoFin", e.target.value)}
-                    required
-                    style={{ width: "100%", padding: "6px", fontSize: "14px" }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Comida */}
-            <div>
-              <strong>Comida</strong>
-              <div style={{ display: "flex", gap: "1rem", marginTop: "0.25rem" }}>
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor={`${dia}-comidaInicio`}
-                    style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}
-                  >
-                    Hora inicio:
-                  </label>
-                  <input
-                    type="time"
-                    id={`${dia}-comidaInicio`}
-                    value={extrasPorDia[dia].comidaInicio}
-                    onChange={(e) => manejarCambioExtra(dia, "comidaInicio", e.target.value)}
-                    required
-                    style={{ width: "100%", padding: "6px", fontSize: "14px" }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor={`${dia}-comidaFin`}
-                    style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}
-                  >
-                    Hora fin:
-                  </label>
-                  <input
-                    type="time"
-                    id={`${dia}-comidaFin`}
-                    value={extrasPorDia[dia].comidaFin}
-                    onChange={(e) => manejarCambioExtra(dia, "comidaFin", e.target.value)}
-                    required
-                    style={{ width: "100%", padding: "6px", fontSize: "14px" }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Dormir y Despertar */}
-            <div style={{ display: "flex", gap: "1rem", marginTop: "0.5rem" }}>
-              <div style={{ flex: 1 }}>
+          {/* Campos fijos */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: ".85rem",
+            marginBottom: "1.5rem"
+          }}>
+            {camposFijos.map(({key,label}) => (
+              <div key={key}>
                 <label
-                  htmlFor={`${dia}-despertarse`}
+                  htmlFor={`${dia}-extra-${key}`}
                   style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}
                 >
-                  Hora de despertarse:
+                  {label}
                 </label>
                 <input
-                  type="time"
-                  id={`${dia}-despertarse`}
-                  value={extrasPorDia[dia].despertarse}
-                  onChange={(e) => manejarCambioExtra(dia, "despertarse", e.target.value)}
-                  required
+                  type={key === "despertarse" || key === "dormirse" ? "time" : "time"}
+                  id={`${dia}-extra-${key}`}
+                  value={extrasPorDia[dia][key]}
+                  onChange={(e) =>
+                    manejarCambioExtra(dia, key, e.target.value)
+                  }
                   style={{ width: "100%", padding: "6px", fontSize: "14px" }}
+                  required
                 />
               </div>
-              <div style={{ flex: 1 }}>
-                <label
-                  htmlFor={`${dia}-dormirse`}
-                  style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}
-                >
-                  Hora de dormirse:
-                </label>
-                <input
-                  type="time"
-                  id={`${dia}-dormirse`}
-                  value={extrasPorDia[dia].dormirse}
-                  onChange={(e) => manejarCambioExtra(dia, "dormirse", e.target.value)}
-                  required
-                  style={{ width: "100%", padding: "6px", fontSize: "14px" }}
-                />
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* Actividades del día */}
+          {/* Actividades agregables ("extra") */}
+          <h4 style={{marginBottom: "10px", marginTop: "1.25rem"}}>Actividades/Materias</h4>
           {datos[dia].map((actividad, idx) => {
             const color =
               materias.find((m) => m.nombre === actividad.materia)?.color || "#f3f4f6";
@@ -381,13 +279,13 @@ export default function HorarioForms() {
                   htmlFor={`${dia}-materia-${idx}`}
                   style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}
                 >
-                  Materia:
+                  Materia o actividad:
                 </label>
                 <select
                   id={`${dia}-materia-${idx}`}
                   value={actividad.materia}
                   onChange={(e) =>
-                    manejarCambio(dia, idx, "materia", e.target.value)
+                    manejarCambioActividad(dia, idx, "materia", e.target.value)
                   }
                   style={{ width: "100%", padding: "6px", fontSize: "14px" }}
                   required
@@ -399,38 +297,6 @@ export default function HorarioForms() {
                     </option>
                   ))}
                 </select>
-
-                {actividad.materia === "Otra" && (
-                  <>
-                    <label
-                      htmlFor={`${dia}-accion-${idx}`}
-                      style={{
-                        fontWeight: "600",
-                        marginTop: "0.5rem",
-                        display: "block"
-                      }}
-                    >
-                      Acción:
-                    </label>
-                    <input
-                      type="text"
-                      id={`${dia}-accion-${idx}`}
-                      placeholder="Describe la acción"
-                      value={actividad.accion}
-                      onChange={(e) =>
-                        manejarCambio(dia, idx, "accion", e.target.value)
-                      }
-                      style={{
-                        width: "100%",
-                        padding: "6px",
-                        fontSize: "14px",
-                        marginTop: "0.25rem"
-                      }}
-                      required={actividad.materia === "Otra"}
-                    />
-                  </>
-                )}
-
                 <div
                   style={{
                     display: "flex",
@@ -441,7 +307,11 @@ export default function HorarioForms() {
                   <div style={{ flex: 1 }}>
                     <label
                       htmlFor={`${dia}-horaInicio-${idx}`}
-                      style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}
+                      style={{
+                        fontWeight: "600",
+                        display: "block",
+                        marginBottom: "4px"
+                      }}
                     >
                       Hora inicio:
                     </label>
@@ -450,17 +320,20 @@ export default function HorarioForms() {
                       id={`${dia}-horaInicio-${idx}`}
                       value={actividad.horaInicio}
                       onChange={(e) =>
-                        manejarCambio(dia, idx, "horaInicio", e.target.value)
+                        manejarCambioActividad(dia, idx, "horaInicio", e.target.value)
                       }
                       style={{ width: "100%", padding: "6px", fontSize: "14px" }}
                       required
                     />
                   </div>
-
                   <div style={{ flex: 1 }}>
                     <label
                       htmlFor={`${dia}-horaFin-${idx}`}
-                      style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}
+                      style={{
+                        fontWeight: "600",
+                        display: "block",
+                        marginBottom: "4px"
+                      }}
                     >
                       Hora fin:
                     </label>
@@ -469,15 +342,13 @@ export default function HorarioForms() {
                       id={`${dia}-horaFin-${idx}`}
                       value={actividad.horaFin}
                       onChange={(e) =>
-                        manejarCambio(dia, idx, "horaFin", e.target.value)
+                        manejarCambioActividad(dia, idx, "horaFin", e.target.value)
                       }
                       style={{ width: "100%", padding: "6px", fontSize: "14px" }}
                       required
                     />
                   </div>
                 </div>
-
-                {/* boton de eliminar */}
                 <button
                   type="button"
                   onClick={() => eliminarActividad(dia, idx)}
@@ -493,11 +364,9 @@ export default function HorarioForms() {
                 >
                   🗑️ Eliminar
                 </button>
-
               </div>
             );
           })}
-
           <button
             type="button"
             onClick={() => agregarActividad(dia)}
