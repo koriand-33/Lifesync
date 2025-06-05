@@ -8,8 +8,10 @@ import {
     Bars3Icon,
     HomeIcon,
     InformationCircleIcon,
-    MapIcon,
-    BuildingOfficeIcon
+    IdentificationIcon,
+    ChatBubbleLeftRightIcon,
+    QuestionMarkCircleIcon,
+    DevicePhoneMobileIcon,
 
 } from '@heroicons/react/24/solid';
 import { useScrollDetection } from "@/hooks/useScrollDetection";
@@ -45,12 +47,12 @@ const Navbar = () => {
             <div className='w-full hidden lg:flex'>
               <nav className='ml-5 flex items-center w-4/5'>
                 <ul className='flex justify-between w-full'>
-                  <li className='hover:text-background hover:bg-accent rounded-lg p-3'><a href="#Inicio">Inicio</a></li>
-                  <li className='hover:text-background hover:bg-accent rounded-lg p-3'><a href="#Datos">Datos</a></li>
-                  <li className='hover:text-background hover:bg-accent rounded-lg p-3'><a href="#Infopage">Descubre Más</a></li>
-                  <li className='hover:text-background hover:bg-accent rounded-lg p-3'><a href="#Pueblos">Reseñas</a></li>
-                  <li className='hover:text-background hover:bg-accent rounded-lg p-3'><a href="#Pueblos">Preguntas</a></li>
-                  <li className='hover:text-background hover:bg-accent rounded-lg p-3'><a href="#Pueblos">Contacto</a></li>
+                  <li className='flex items-center justify-center'><a href="#Principal" className='hover:text-background hover:bg-accent rounded-lg p-3'>Inicio</a></li>
+                  <li className='flex items-center justify-center'><a href="#Datos" className='hover:text-background hover:bg-accent rounded-lg p-3'>Datos</a></li>
+                  <li className='flex items-center justify-center'><a href="#Moreabout" className='hover:text-background hover:bg-accent rounded-lg p-3'>Descubre Más</a></li>
+                  <li className='flex items-center justify-center'><a href="#testimonials" className='hover:text-background hover:bg-accent rounded-lg p-3'>Reseñas</a></li>
+                  <li className='flex items-center justify-center'><a href="#FAQ" className='hover:text-background hover:bg-accent rounded-lg p-3'>Preguntas</a></li>
+                  <li className='flex items-center justify-center'><a href="#FAQ" className='hover:text-background hover:bg-accent rounded-lg p-3'>Contacto</a></li>
 
                 </ul>
               </nav>
@@ -61,10 +63,10 @@ const Navbar = () => {
                 </div>
                 <ul className='flex items-center gap-8'>
                   <li className='border-r border-gray-400 pr-8'>
-                    <Link href="/session/Acceso?register=true"  className='cursor-pointer'>Registro</Link>
+                    <Link href="/session?register=true"  className='cursor-pointer'>Registro</Link>
                   </li>
                   <li>
-                    <Link href="/acceso" className='p-3 bg-primary rounded-2xl cursor-pointer text-white'>
+                    <Link href="/session" className='p-3 bg-primary rounded-2xl cursor-pointer text-white'>
                         Acceso
                     </Link>
                   </li>
@@ -105,7 +107,7 @@ const Navbar = () => {
 
                 </li>
                 <li className='py-3'>
-                    <a href='#Inicio' onClick={() => setMenuOpen(false)} className='flex items-center text-text-secondary hover:text-text font-bold text-[15px]'>
+                    <a href='#Principal' onClick={() => setMenuOpen(false)} className='flex items-center text-text-secondary hover:text-text font-bold text-[15px]'>
                         <HomeIcon className="w-6 h-6 mr-2" />
                         <p>Inicio</p>
                     </a>
@@ -117,26 +119,26 @@ const Navbar = () => {
                     </a>
                 </li>
                 <li className='py-3'>
-                    <a href='#Infopage' onClick={() => setMenuOpen(false)} className='flex items-center text-text-secondary hover:text-text font-bold text-[15px]'>
-                        <MapIcon className="w-6 h-6 mr-2" />
+                    <a href='#Moreabout' onClick={() => setMenuOpen(false)} className='flex items-center text-text-secondary hover:text-text font-bold text-[15px]'>
+                        <IdentificationIcon className="w-6 h-6 mr-2" />
                         <p>Descubre Más</p>
                     </a>
                 </li>
                 <li className=' py-3'>
-                    <a href='#Pueblos' onClick={() => setMenuOpen(false)} className='flex items-center text-text-secondary hover:text-text font-bold text-[px]'>
-                        <BuildingOfficeIcon className="w-6 h-6 mr-2" />
+                    <a href='#testimonials' onClick={() => setMenuOpen(false)} className='flex items-center text-text-secondary hover:text-text font-bold text-[px]'>
+                        <ChatBubbleLeftRightIcon className="w-6 h-6 mr-2" />
                         <p>Reseñas</p>
                     </a>
                 </li>
                 <li className=' py-3'>
-                    <a href='#Pueblos' onClick={() => setMenuOpen(false)} className='flex items-center text-text-secondary hover:text-text font-bold text-[px]'>
-                        <BuildingOfficeIcon className="w-6 h-6 mr-2" />
+                    <a href='#FAQ' onClick={() => setMenuOpen(false)} className='flex items-center text-text-secondary hover:text-text font-bold text-[px]'>
+                        <QuestionMarkCircleIcon className="w-6 h-6 mr-2" />
                         <p>Preguntas</p>
                     </a>
                 </li>
                 <li className=' py-3'>
-                    <a href='#Pueblos' onClick={() => setMenuOpen(false)} className='flex items-center text-text-secondary hover:text-text font-bold text-[px]'>
-                        <BuildingOfficeIcon className="w-6 h-6 mr-2" />
+                    <a href='#contacto' onClick={() => setMenuOpen(false)} className='flex items-center text-text-secondary hover:text-text font-bold text-[px]'>
+                        <DevicePhoneMobileIcon className="w-6 h-6 mr-2" />
                         <p>Contacto</p>
                     </a>
                 </li>
@@ -144,12 +146,12 @@ const Navbar = () => {
 
             <ul className='mt-4'>
               <li className='flex w-full py-3'>
-                <Link href="/session/Acceso?register=true" className='flex justify-center items-center w-full px-4 py-2.5 text-sm rounded font-bold bg-detail transition-colors cursor-pointer'>
+                <Link href="/session?register=true" className='flex justify-center items-center w-full px-4 py-2.5 text-sm rounded font-bold bg- transition-colors cursor-pointer'>
                   Registro
                 </Link>
               </li>
               <li className='flex py-3 w-full'>
-                <Link href="/acceso" className='flex justify-center items-center w-full px-4 py-2.5 text-sm rounded font-bold text-white bg-primary transition-colors cursor-pointer'>
+                <Link href="/session" className='flex justify-center items-center w-full px-4 py-2.5 text-sm rounded font-bold text-white bg-primary transition-colors cursor-pointer'>
                   Acceso
                 </Link>
               </li>

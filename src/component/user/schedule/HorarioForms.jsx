@@ -16,21 +16,27 @@ const materias = [
 
 const dias = ["Lun", "Mar", "Mié", "Jue", "Vie"];
 
+
 export default function HorarioForms() {
   // Estado para actividades
+  // const [datos, setDatos] = useState(() =>
+  //   Object.fromEntries(
+  //     dias.map((dia) => [
+  //       dia,
+  //       [
+  //         {
+  //           materia: "",
+  //           accion: "",
+  //           horaInicio: "",
+  //           horaFin: ""
+  //         }
+  //       ]
+  //     ])
+  //   )
+  // );
   const [datos, setDatos] = useState(() =>
-    Object.fromEntries(
-      dias.map((dia) => [
-        dia,
-        [
-          {
-            materia: "",
-            accion: "",
-            horaInicio: "",
-            horaFin: ""
-          }
-        ]
-      ])
+  Object.fromEntries(
+      dias.map((dia) => [dia, []])
     )
   );
 
@@ -83,6 +89,14 @@ export default function HorarioForms() {
     setDatos((prev) => {
       const actividadesDia = [...prev[dia]];
       actividadesDia.push({ materia: "", accion: "", horaInicio: "", horaFin: "" });
+      return { ...prev, [dia]: actividadesDia };
+    });
+  };
+
+  const eliminarActividad = (dia, index) => {
+    setDatos((prev) => {
+      const actividadesDia = [...prev[dia]];
+      actividadesDia.splice(index, 1);
       return { ...prev, [dia]: actividadesDia };
     });
   };
@@ -462,6 +476,24 @@ export default function HorarioForms() {
                     />
                   </div>
                 </div>
+
+                {/* boton de eliminar */}
+                <button
+                  type="button"
+                  onClick={() => eliminarActividad(dia, idx)}
+                  style={{
+                    marginTop: "1rem",
+                    backgroundColor: "#ef4444",
+                    color: "white",
+                    border: "none",
+                    padding: "0.25rem 0.5rem",
+                    borderRadius: "4px",
+                    cursor: "pointer"
+                  }}
+                >
+                  🗑️ Eliminar
+                </button>
+
               </div>
             );
           })}

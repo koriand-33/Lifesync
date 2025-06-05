@@ -5,16 +5,24 @@ import {
   XMarkIcon,
   Bars3Icon,
   HomeIcon,
+  CalendarIcon,
+  ClockIcon,
+  UserIcon,
   InformationCircleIcon,
   MapIcon,
   BuildingOfficeIcon,
 } from '@heroicons/react/24/solid';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+// cerrar sesion
+import { signOut } from "firebase/auth";
+import { useRouter } from 'next/navigation';
+import { auth } from '../../../conexion_BD/firebase';
 
 const Navbar = () => {
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const pathname = usePathname(); // Obtener la ruta actual
+  const pathname = usePathname();
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? 'hidden' : '';
@@ -24,19 +32,30 @@ const Navbar = () => {
   }, [menuOpen]);
 
   const navItems = [
-    { name: 'Home', href: '/home', icon: HomeIcon },
-    { name: 'Calendar', href: '/calendar', icon: InformationCircleIcon },
-    { name: 'Schedules', href: '/schedules', icon: MapIcon },
-    { name: 'Perfil', href: '/perfil', icon: BuildingOfficeIcon },
+    { name: 'Home', href: '/user/home', icon: HomeIcon },
+    { name: 'Calendar', href: '/user/horario', icon: CalendarIcon },
+    { name: 'Schedules', href: '/user/schedules', icon: ClockIcon },
+    { name: 'Perfil', href: '/user/profile', icon: UserIcon },
   ];
+
+    const cerrarSesion = () => {
+      signOut(auth)
+        .then(() => {
+          console.log("Sesión cerrada");
+          router.push("/session");
+        })
+        .catch((error) => {
+          console.error("Error al cerrar sesión:", error);
+        });
+    };
 
   return (
     <>
-      <header className="fixed top-0 left-0 w-full z-1 transition-colors duration-300 bg-background-80 shadow-md backdrop-blur">
+      <header className="fixed top-0 left-0 w-full z-20 transition-colors duration-300 bg-background-80 shadow-md backdrop-blur">
         <div className="flex items-center px-4 py-4">
           <div className="flex items-center gap-4 w-full">
             <div>
-              <Link href="/" className="flex items-center">
+              <Link href="/user/home" className="flex items-center">
                 <img src="/logo.png" alt="logo" className="w-20 h-auto" />
               </Link>
             </div>
@@ -62,12 +81,12 @@ const Navbar = () => {
               <div className="ml-20 flex items-center pr-4 w-1/5">
                 <ul className="flex items-center gap-8">
                   <li>
-                    <Link
-                      href="/session/Acceso"
+                    <button
+                      onClick={cerrarSesion}
                       className="p-3 bg-primary rounded-2xl cursor-pointer text-white"
                     >
                       Cerrar sesión
-                    </Link>
+                    </button>
                   </li>
                 </ul>
               </div>
@@ -125,12 +144,12 @@ const Navbar = () => {
 
             <ul className="mt-4">
               <li className="flex py-3 w-full">
-                <Link
-                  href="/session/Acceso"
+                <button
+                  onClick={cerrarSesion}
                   className="flex justify-center items-center w-full px-4 py-2.5 text-sm rounded font-bold text-white bg-primary transition-colors cursor-pointer"
                 >
                   Cerrar sesión
-                </Link>
+                </button>
               </li>
             </ul>
           </div>

@@ -141,7 +141,7 @@ export default function Page() {
   };
 
   return (
-    <div>
+    <div className='w-full'>
       <h1 className='text-3xl font-bold mt-5 text-gray-800 mb-10'>Hoy</h1>
 
       {/* Línea de tiempo */}
