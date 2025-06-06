@@ -67,7 +67,7 @@ const Acceso = () => {
               </div>
             </div>
 
-            <div className="md:hidden block ">
+            <div className={`${isRight ? 'md:hidden block' : 'hidden'}`}>
               <div className="flex flex-col items-center justify-center w-full h-full">
                 <div className='flex flex-col w-full'>
                   <div className="w-full">

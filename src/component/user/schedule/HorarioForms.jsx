@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { subirHorario } from "@/services/subirHorario";
 import { auth } from "../../../../conexion_BD/firebase";
+import { TrashIcon } from "@heroicons/react/24/outline";
 
 // Helpers para validación
 const timeToMinutes = (t) => {
@@ -405,9 +406,10 @@ const manejarCambioFijo = (dia, key, valor) => {
 
   // FORMATOS
   return (
-    <form onSubmit={handleSubmit} style={{ maxWidth: 600, margin: "auto" }}>
-      <h2 style={{ marginBottom: "1rem", textAlign: "center" }}>Materias fijas (ordena según dificultad: 6 = más difícil)</h2>
-      <div>
+    <>
+      <h2 style={{ textAlign: "center"}} className="text-2xl mt-10 font-semibold">Materias fijas</h2>
+      <p className="flex justify-center items-center mb-8">(ordena según dificultad: 6 = más difícil)</p>
+      <div className="px-8">
         {materiasFijas.map((mat, idx) => (
           <div
             key={mat.nombre}
@@ -446,7 +448,7 @@ const manejarCambioFijo = (dia, key, valor) => {
       </div>
       <div style={{ margin: "2.5rem 0 1rem 0", fontWeight: "bold", textAlign: "center" }}>Materias o actividades extras (puedes agregar y quitar)</div>
       {materiasExtra.map((mat, idx) => (
-        <div key={idx} style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: 6 }}>
+        <div key={idx} style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: 6 }} className="px-8">
           <input
             type="text"
             value={mat.nombre}
@@ -465,11 +467,15 @@ const manejarCambioFijo = (dia, key, valor) => {
             type="button"
             onClick={() => eliminarMateriaExtra(idx)}
             style={{
-              background: "#ef4444", color: "white", border: "none", borderRadius: "50%", width: 28, height: 28, fontSize: 18, cursor: "pointer"
-            }}>🗑️</button>
+              background: "#ef4444", color: "white", border: "none", borderRadius: "50%", width: 31, height: 31, fontSize: 18, cursor: "pointer"
+            }}
+            className="flex items-center justify-center"
+            >
+              <TrashIcon className="h-4" />
+            </button>
         </div>
       ))}
-      <form onSubmit={agregarMateria} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      <form onSubmit={agregarMateria} style={{ display: "flex", gap: 6, alignItems: "center"}} className="px-8">
         <input
           type="text"
           value={nuevaMateria.nombre}
@@ -490,7 +496,8 @@ const manejarCambioFijo = (dia, key, valor) => {
         </button>
       </form>
       <hr style={{ margin: "2rem 0" }} />
-      <h2 style={{ marginBottom: "1rem", textAlign: "center" }}>Horario Semanal</h2>
+      <h2 style={{ marginBottom: "1rem", textAlign: "center" }} className="text-2xl font-semibold">Horario Semanal</h2>   
+      <form onSubmit={handleSubmit} style={{ maxWidth: 600, margin: "auto" }}>
       {dias.map(dia => (
         <fieldset key={dia} style={{ border: "1px solid #bbb", marginBottom: 28, borderRadius: 9, padding: 18 }}>
           <legend style={{ fontWeight: "bold", fontSize: 18 }}>{dia}</legend>
@@ -566,7 +573,10 @@ const manejarCambioFijo = (dia, key, valor) => {
                   cursor: "pointer"
                 }}
               >
-                🗑️ Eliminar
+                <div className="flex items-center justify-center">
+                  <TrashIcon className="h-4 mr-2" />
+                  <p>Eliminar</p>
+                </div>
               </button>
             </div>
           ))}
@@ -604,5 +614,6 @@ const manejarCambioFijo = (dia, key, valor) => {
         Guardar horario
       </button>
     </form>
+    </>
   );
 }
