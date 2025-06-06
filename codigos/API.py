@@ -75,7 +75,6 @@ for model in modelosKnn.models.keys():
 def predecir():
     try:
         data = request.get_json()
-        features = data.get("features")
         tiempo_libre_por_dia = obtener_tiempo_libre(
             data.get("tiempo_libre"), frecuencias
         )
