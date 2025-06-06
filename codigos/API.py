@@ -83,8 +83,6 @@ def predecir():
         for dia in tiempo_libre_por_dia["tiempo_total_libre"].keys():
             tiempo_total += tiempo_libre_por_dia["tiempo_total_libre"][dia]
         tareas = asignar_tareas(data.get("tareas"), tiempo_total, frecuencias)
-        if modelo not in modelosKnn.models:
-            return jsonify({"error": "Modelo no válido"}), 400
         materias = predecir_individuo(
             tareas["tiempo_restante"] / 5,
             tiempo_libre_por_dia["materias"],
