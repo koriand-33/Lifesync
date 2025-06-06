@@ -53,8 +53,8 @@ function agruparActividadesPorDia(extrasPorDia) {
     if (despertar && dormir) {
       actividadesPorDia[dia].push({
         actividad: 'Dormirse',
-        inicio: dormir,
-        fin: despertar
+        inicio: despertar,
+        fin: dormir
       });
     }
   }
