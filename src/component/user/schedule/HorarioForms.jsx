@@ -4,6 +4,16 @@ import React, { useState } from "react";
 import { subirHorario } from "@/services/subirHorario";
 import { auth } from "../../../../conexion_BD/firebase";
 
+// Helpers para validación
+const timeToMinutes = (t) => {
+  if (!t) return null;
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+};
+const intervalsOverlap = (aIni, aFin, bIni, bFin) => {
+  return aIni < bFin && bIni < aFin;
+};
+
 function agruparActividadesPorDia(extrasPorDia) {
   const actividadesPorDia = {
     Lun: [],
@@ -76,30 +86,47 @@ const camposFijos = [
 ];
 
 export default function HorarioForms({ horarioExistente = null, onClose, onRefresh }) {
-
-  const [materias, setMaterias] = useState(() =>
-    horarioExistente?.materias
-      ? Object.entries(horarioExistente.materias).map(([nombre, { color }]) => ({ nombre, color }))
-      : materiasIniciales
+  // Materias fijas: siempre esas 6, pero ordenables
+  const [materiasFijas, setMateriasFijas] = useState(
+    () => horarioExistente && horarioExistente.materias
+      ? materiasIniciales
+        .map((m) => ({ ...m })) // conservar orden del inicial si no hay historial
+        .sort((a, b) => {
+          // Si está en horarioExistente, tez el color como identificación
+          const aPos = Object.keys(horarioExistente.materias).indexOf(a.nombre);
+          const bPos = Object.keys(horarioExistente.materias).indexOf(b.nombre);
+          return aPos - bPos;
+        })
+      : materiasIniciales.map(m => ({ ...m }))
+  );
+  // Materias solo-agregables (podrán eliminarse)
+  const [materiasExtra, setMateriasExtra] = useState(
+    () => horarioExistente
+      ? Object.entries(horarioExistente.materias)
+          .filter(([nombre]) => !materiasIniciales.find(mi => mi.nombre === nombre))
+          .map(([nombre, { color }]) => ({ nombre, color }))
+      : []
   );
   const [nuevaMateria, setNuevaMateria] = useState({ nombre: "", color: "#888888" });
 
-  // Estado para actividades (solo seleccionables con materias)
+  // Drag&drop orden
+  const [dragIndex, setDragIndex] = useState(null);
+
+  // Estado para actividades agregables con materias
   const [datos, setDatos] = useState(() =>
     horarioExistente?.clases || Object.fromEntries(dias.map((dia) => [dia, []]))
   );
-
   // Estado para actividades fijas de cada día
   const [extrasPorDia, setExtrasPorDia] = useState(() => {
-  if (!horarioExistente?.extras) {
-    return Object.fromEntries(
-      dias.map((dia) => [
-        dia,
-        Object.fromEntries(camposFijos.map(c => [c.key, ""]))
-      ])
-    );
-  }
-    // reconstruye extrasPorDia desde actividades agrupadas
+    if (!horarioExistente?.extras) {
+      return Object.fromEntries(
+        dias.map((dia) => [
+          dia,
+          Object.fromEntries(camposFijos.map(c => [c.key, ""]))
+        ])
+      );
+    }
+    // reconstruir extrasPorDia desde actividades agrupadas
     const reconstruido = {};
     for (const dia of dias) {
       const diaExtras = horarioExistente.extras[dia] || [];
@@ -127,71 +154,163 @@ export default function HorarioForms({ horarioExistente = null, onClose, onRefre
     return reconstruido;
   });
 
-  // Manejo materias nuevas
-  const agregarMateria = () => {
-    if (
-      nuevaMateria.nombre.trim() &&
-      !materias.some((m) => m.nombre === nuevaMateria.nombre)
-    ) {
-      setMaterias((prev) => [...prev, nuevaMateria]);
+  const manejarCambioMateriaFija = (idx, campo, valor) => {
+    setMateriasFijas((prev) =>
+      prev.map((m, i) => (i === idx ? { ...m, [campo]: valor } : m))
+    );
+  };
+
+  const manejarCambioMateriaExtra = (idx, campo, valor) => {
+    setMateriasExtra((prev) =>
+      prev.map((m, i) => (i === idx ? { ...m, [campo]: valor } : m))
+    );
+  };
+
+  // Drag and drop reorder fijo
+  const onDragStart = (idx) => setDragIndex(idx);
+  const onDragOver = (idx) => {
+    if (dragIndex === null || dragIndex === idx) return;
+    setMateriasFijas(prev => {
+      const copy = prev.slice();
+      const [dragItem] = copy.splice(dragIndex, 1);
+      copy.splice(idx, 0, dragItem);
+      setDragIndex(idx);
+      return copy;
+    });
+  };
+  const onDragEnd = () => setDragIndex(null);
+
+  const agregarMateria = (e) => {
+    e.preventDefault();
+    if (nuevaMateria.nombre.trim() !== "") {
+      setMateriasExtra([...materiasExtra, { ...nuevaMateria }]);
       setNuevaMateria({ nombre: "", color: "#888888" });
     }
   };
 
-  // Eliminar una materia agregada (y borrar actividades que usen esa materia)
-  const eliminarMateria = (nombreMateria) => {
-    setMaterias((prev) => prev.filter(m => m.nombre !== nombreMateria));
-    setDatos((prev) => {
-      const next = {};
-      for (const d in prev) {
-        next[d] = prev[d].filter(a => a.materia !== nombreMateria);
-      }
-      return next;
-    });
+  const eliminarMateriaExtra = (idx) => {
+    setMateriasExtra(materiasExtra.filter((_, i) => i !== idx));
   };
 
-  // Cambios en campos fijos de cada día
-  const manejarCambioExtra = (dia, campo, valor) => {
-    setExtrasPorDia((prev) => ({
+  
+
+  const agregarActividad = (dia) => {
+    setDatos((prev) => ({
       ...prev,
-      [dia]: {
+      [dia]: [
         ...prev[dia],
-        [campo]: valor
-      }
+        { materia: "", horaInicio: "", horaFin: "" }
+      ]
     }));
   };
 
-  // Cambios en actividades agregadas
-  const manejarCambioActividad = (dia, index, campo, valor) => {
-    setDatos((prev) => {
-      const actividadesDia = [...prev[dia]];
-      actividadesDia[index] = {
-        ...actividadesDia[index],
-        [campo]: valor
-      };
-      return { ...prev, [dia]: actividadesDia };
-    });
+  const eliminarActividad = (dia, idx) => {
+    setDatos((prev) => ({
+      ...prev,
+      [dia]: prev[dia].filter((_, i) => i !== idx)
+    }));
   };
 
-  const agregarActividad = (dia) => {
-    setDatos((prev) => {
-      const actividadesDia = [...prev[dia]];
-      actividadesDia.push({ materia: "", horaInicio: "", horaFin: "" });
-      return { ...prev, [dia]: actividadesDia };
-    });
-  };
+  // Ayudante para manipular intervalos
+const intervalTraslape = (aIni, aFin, bIni, bFin) => aIni < bFin && bIni < aFin;
 
-  const eliminarActividad = (dia, index) => {
-    setDatos((prev) => {
-      const actividadesDia = [...prev[dia]];
-      actividadesDia.splice(index, 1);
-      return { ...prev, [dia]: actividadesDia };
-    });
-  };
+// Validación y manejo de horarios al editar actividades de materias
+const manejarCambioActividad = (dia, idx, campo, valor) => {
+  setDatos((prev) => {
+    const actividades = prev[dia].map((act, i) =>
+      i === idx ? { ...act, [campo]: valor } : act
+    );
+    // Solo validamos si ya hay ambos campos
+    const act = actividades[idx];
+    // Validar hora fin > hora inicio
+    if ((campo === "horaFin" || campo === "horaInicio") && act.horaInicio && act.horaFin) {
+      const hI = timeToMinutes(act.horaInicio);
+      const hF = timeToMinutes(act.horaFin);
+      if (hF <= hI) {
+        alert("La hora de fin debe ser mayor a la de inicio.");
+        actividades[idx][campo] = ""; // Borra el valor editado
+        return { ...prev, [dia]: actividades };
+      }
+    }
+    // Validar traslape en actividades de ese día
+    if (act.horaInicio && act.horaFin) {
+      const hI = timeToMinutes(act.horaInicio);
+      const hF = timeToMinutes(act.horaFin);
+      for (let j = 0; j < actividades.length; j++) {
+        if (j !== idx) {
+          const o = actividades[j];
+          if (o.horaInicio && o.horaFin) {
+            const oI = timeToMinutes(o.horaInicio);
+            const oF = timeToMinutes(o.horaFin);
+            if (intervalTraslape(hI, hF, oI, oF)) {
+              alert(`La actividad se traslapa con otra. Se eliminará esta entrada.`);
+              // elimina la actividad editada
+              return { ...prev, [dia]: actividades.filter((_, k) => k !== idx) };
+            }
+          }
+        }
+      }
+    }
+    return { ...prev, [dia]: actividades };
+  });
+};
 
-  // Validación al enviar
+// Validación y manejo de horarios al editar campos fijos
+const manejarCambioFijo = (dia, key, valor) => {
+  setExtrasPorDia(prev => {
+    const next = {
+      ...prev,
+      [dia]: {
+        ...prev[dia],
+        [key]: valor
+      },
+    };
+    // Validar directo campos INICIO-FIN
+    if (key.endsWith('Fin')) {
+      const inicioKey = key.replace('Fin', 'Inicio');
+      const ini = timeToMinutes(next[dia][inicioKey]);
+      const fin = timeToMinutes(valor);
+      if (ini !== null && fin !== null && fin <= ini) {
+        alert("La hora de fin debe ser mayor a la de inicio.");
+        next[dia][key] = "";
+      }
+    }
+    // Validar traslape con otras actividades fijas
+    // Checa todos los pares de intervalos fijos en ese día
+    const intervals = [];
+    camposFijos.forEach(({ key: cKey, label }) => {
+      if (cKey.endsWith('Inicio')) {
+        const iniV = timeToMinutes(next[dia][cKey]);
+        const finV = timeToMinutes(next[dia][cKey.replace('Inicio', 'Fin')]);
+        if (iniV !== null && finV !== null)
+          intervals.push({ ini: iniV, fin: finV, label });
+      }
+    });
+    // Revisar despertar/dormir
+    const despertar = timeToMinutes(next[dia].despertarse);
+    const dormir = timeToMinutes(next[dia].dormirse);
+    if (despertar !== null && dormir !== null)
+      intervals.push({ ini: despertar, fin: dormir, label: "Dormirse" });
+    // Checar traslapes entre ellos
+    for (let i = 0; i < intervals.length; i++) {
+      for (let j = i + 1; j < intervals.length; j++) {
+        if (intervalTraslape(intervals[i].ini, intervals[i].fin, intervals[j].ini, intervals[j].fin)) {
+          alert(`Las actividades "${intervals[i].label}" y "${intervals[j].label}" se traslapan. Se borra el último valor ingresado.`);
+          // Borra el último editado
+          next[dia][key] = "";
+          return next;
+        }
+      }
+    }
+    return next;
+  });
+};
+
+
+  // VALIDACIÓN AL GUARDAR
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     for (const dia of dias) {
       for (let { key, label } of camposFijos) {
         if (!extrasPorDia[dia][key]) {
@@ -200,156 +319,192 @@ export default function HorarioForms({ horarioExistente = null, onClose, onRefre
         }
       }
     }
-    console.log("Materias:", materias);
-    console.log("Horario enviado:", datos);
-    const extrasFormateadas = agruparActividadesPorDia(extrasPorDia);
-    console.log("Actividades extras organizadas por día:", extrasFormateadas);
-
-    const userId = auth.currentUser?.uid;
-      if (!userId) return;
-
-    try {
-      await subirHorario(userId, materias, datos, extrasFormateadas);
-      alert("¡Horario guardado correctamente en Firebase!");
-      onRefresh(); 
-      onClose();
-    } catch (error) {
-      console.error("Error al guardar en Firebase:", error);
-      alert("Hubo un error al guardar el horario. Inténtalo más tarde.");
+    for (const dia of dias) {
+      for (let { key, label } of camposFijos) {
+        if (key.endsWith('Inicio')) {
+          const finKey = key.replace('Inicio', 'Fin');
+          const horaInicio = timeToMinutes(extrasPorDia[dia][key]);
+          const horaFin = timeToMinutes(extrasPorDia[dia][finKey]);
+          if (horaInicio !== null && horaFin !== null && horaFin <= horaInicio) {
+            alert(`En ${dia}, "${label}" debe tener hora de fin mayor a la de inicio.`);
+            return;
+          }
+        }
+      }
+      const despertar = timeToMinutes(extrasPorDia[dia].despertarse);
+      const dormir = timeToMinutes(extrasPorDia[dia].dormirse);
+      if (despertar !== null && dormir !== null && dormir <= despertar) {
+        alert(`En ${dia}, "Dormirse" debe ser después de "Despertarse".`);
+        return;
+      }
+      for (let idx = 0; idx < datos[dia].length; idx++) {
+        const act = datos[dia][idx];
+        const hI = timeToMinutes(act.horaInicio);
+        const hF = timeToMinutes(act.horaFin);
+        if (hI !== null && hF !== null && hF <= hI) {
+          alert(`En ${dia}, la actividad "${act.materia}" (#${idx + 1}) la hora de fin debe ser mayor a la de inicio.`);
+          return;
+        }
+      }
     }
+    for (const dia of dias) {
+      const intervals = [];
+      for (let { key, label } of camposFijos) {
+        if (key.endsWith('Inicio')) {
+          const ini = timeToMinutes(extrasPorDia[dia][key]);
+          const fin = timeToMinutes(extrasPorDia[dia][key.replace('Inicio', 'Fin')]);
+          if (ini !== null && fin !== null) {
+            intervals.push({ ini, fin, label });
+          }
+        }
+      }
+      const despertar = timeToMinutes(extrasPorDia[dia].despertarse);
+      const dormir = timeToMinutes(extrasPorDia[dia].dormirse);
+      if (despertar !== null && dormir !== null) {
+        intervals.push({ ini: despertar, fin: dormir, label: "Dormirse" });
+      }
+      for (let idx = 0; idx < datos[dia].length; idx++) {
+        const act = datos[dia][idx];
+        const hI = timeToMinutes(act.horaInicio);
+        const hF = timeToMinutes(act.horaFin);
+        if (hI !== null && hF !== null) {
+          intervals.push({ ini: hI, fin: hF, label: `Actividad "${act.materia}" (#${idx + 1})` });
+        }
+      }
+      for (let i = 0; i < intervals.length; i++) {
+        for (let j = i + 1; j < intervals.length; j++) {
+          if (intervalsOverlap(intervals[i].ini, intervals[i].fin, intervals[j].ini, intervals[j].fin)) {
+            alert(
+              `En ${dia}, las actividades "${intervals[i].label}" y "${intervals[j].label}" se traslapan.`
+            );
+            return;
+          }
+        }
+      }
+    }
+
+    // Agrupamos materias fijas y extra
+    const materiasAll = [...materiasFijas, ...materiasExtra];
+    const materiasObj = {};
+    for (const m of materiasAll) materiasObj[m.nombre] = { color: m.color };
+    const extrasAgrupadas = agruparActividadesPorDia(extrasPorDia);
+
+    await subirHorario({
+      uid: auth.currentUser.uid,
+      materias: materiasObj,
+      clases: datos,
+      extras: extrasAgrupadas
+    });
+
+    if (onRefresh) onRefresh();
+    if (onClose) onClose();
   };
 
+  // Materias disponibles (para select)
+  const opcionesMaterias = [...materiasFijas, ...materiasExtra];
+
+  // FORMATOS
   return (
-    <form
-      onSubmit={handleSubmit}
-      style={{ padding: "2rem", maxWidth: 900, margin: "auto" }}
-    >
-      <h2
-        style={{
-          fontSize: "24px",
-          fontWeight: "bold",
-          marginBottom: "1rem",
-          textAlign: "center"
-        }}
-      >
-        Horario de clases y actividades
-      </h2>
-      
-      {/* Bloques de materias existentes */}
-      <div style={{ marginBottom: "1.5rem" }}>
-        <h3 style={{ fontWeight: "bold", marginBottom: "0.75rem" }}>
-          Materias y actividades:
-        </h3>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
-          {materias.map((m, i) => (
-            <div key={m.nombre} style={{
-              background: m.color,
-              minWidth: 110,
-              textAlign: "center",
-              padding: "0.7rem 1rem",
-              borderRadius: "1rem",
-              fontWeight: "600",
-              position: "relative"
-            }}>
-              {m.nombre}
-              {i >= materiasIniciales.length && (
-                <span
-                  title="Eliminar esta materia"
-                  onClick={() => eliminarMateria(m.nombre)}
-                  style={{
-                    position: "absolute",
-                    top: 5,
-                    right: 8,
-                    cursor: "pointer",
-                    color: "#c0392b",
-                    fontSize: "18px",
-                    lineHeight: "16px",
-                    fontWeight: "bold"
-                  }}
-                  tabIndex={0}
-                  role="button"
-                >
-                  ❌
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-        <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
+    <form onSubmit={handleSubmit} style={{ maxWidth: 600, margin: "auto" }}>
+      <h2 style={{ marginBottom: "1rem", textAlign: "center" }}>Materias fijas (ordena según dificultad: 6 = más difícil)</h2>
+      <div>
+        {materiasFijas.map((mat, idx) => (
+          <div
+            key={mat.nombre}
+            draggable
+            onDragStart={() => onDragStart(idx)}
+            onDragOver={e => { e.preventDefault(); onDragOver(idx); }}
+            onDragEnd={onDragEnd}
+            style={{
+              display: "flex", gap: "6px", alignItems: "center", marginBottom: 6,
+              background: dragIndex === idx ? "#ddeeff" : "transparent",
+              cursor: "grab"
+            }}
+          >
+            <span style={{
+              fontWeight: 700, width: 20,
+              color: "#388", textAlign: "right"
+            }}>{materiasFijas.length - idx}</span>
+            <input
+              type="text"
+              value={mat.nombre}
+              onChange={e => manejarCambioMateriaFija(idx, "nombre", e.target.value)}
+              required
+              style={{ flex: 2, padding: 4 }}
+              placeholder="Nombre de la materia"
+              readOnly // Solo se puede editar color
+            />
+            <input
+              type="color"
+              value={mat.color}
+              onChange={e => manejarCambioMateriaFija(idx, "color", e.target.value)}
+              style={{ width: 34, height: 34, border: "none" }}
+            />
+            {/* No eliminar */}
+          </div>
+        ))}
+      </div>
+      <div style={{ margin: "2.5rem 0 1rem 0", fontWeight: "bold", textAlign: "center" }}>Materias o actividades extras (puedes agregar y quitar)</div>
+      {materiasExtra.map((mat, idx) => (
+        <div key={idx} style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: 6 }}>
           <input
             type="text"
-            placeholder="Aqui escribe el nombre de la nueva materia"
-            value={nuevaMateria.nombre}
-            maxLength={30}
-            className="p-2 rounded-md border border-gray-300"
-            style={{ flex: 2, padding: "6px", fontSize: "14px" }}
-            onChange={(e) =>
-              setNuevaMateria((nm) => ({ ...nm, nombre: e.target.value }))
-            }
+            value={mat.nombre}
+            onChange={e => manejarCambioMateriaExtra(idx, "nombre", e.target.value)}
+            required
+            style={{ flex: 2, padding: 4 }}
+            placeholder="Nombre de la materia"
           />
           <input
             type="color"
-            value={nuevaMateria.color}
-            style={{ width: 38, height: 38, padding: 2, flex: "none", border: "none" }}
-            onChange={(e) =>
-              setNuevaMateria((nm) => ({ ...nm, color: e.target.value }))
-            }
+            value={mat.color}
+            onChange={e => manejarCambioMateriaExtra(idx, "color", e.target.value)}
+            style={{ width: 34, height: 34, border: "none" }}
           />
           <button
             type="button"
-            onClick={agregarMateria}
+            onClick={() => eliminarMateriaExtra(idx)}
             style={{
-              backgroundColor: "#3b82f6",
-              color: "white",
-              border: "none",
-              padding: "0.5rem 1rem",
-              borderRadius: "10px",
-              cursor: "pointer",
-              fontWeight: "bold"
-            }}
-          >
-            + Agregar materia o actividad
-          </button>
+              background: "#ef4444", color: "white", border: "none", borderRadius: "50%", width: 28, height: 28, fontSize: 18, cursor: "pointer"
+            }}>🗑️</button>
         </div>
-      </div>
-
-      {/* Horario por días */}
-      {dias.map((dia) => (
-        <fieldset
-          key={dia}
-          style={{
-            marginBottom: "2rem",
-            padding: "1rem",
-            border: "1px solid #ccc",
-            borderRadius: "8px"
-          }}
-        >
-          <legend style={{ fontWeight: "bold", fontSize: "18px" }}>
-            {dia}
-          </legend>
+      ))}
+      <form onSubmit={agregarMateria} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <input
+          type="text"
+          value={nuevaMateria.nombre}
+          onChange={e => setNuevaMateria(m => ({ ...m, nombre: e.target.value }))}
+          placeholder="Agregar materia"
+          style={{ flex: 2, padding: 4 }}
+          required
+        />
+        <input
+          type="color"
+          value={nuevaMateria.color}
+          onChange={e => setNuevaMateria(m => ({ ...m, color: e.target.value }))}
+          style={{ width: 34, height: 34, border: "none" }}
+        />
+        <button type="submit"
+          style={{ background: "#3b82f6", color: "white", border: "none", padding: "0 10px", borderRadius: 5, fontWeight: "bold", fontSize: 18, cursor: "pointer" }}>
+          +
+        </button>
+      </form>
+      <hr style={{ margin: "2rem 0" }} />
+      <h2 style={{ marginBottom: "1rem", textAlign: "center" }}>Horario Semanal</h2>
+      {dias.map(dia => (
+        <fieldset key={dia} style={{ border: "1px solid #bbb", marginBottom: 28, borderRadius: 9, padding: 18 }}>
+          <legend style={{ fontWeight: "bold", fontSize: 18 }}>{dia}</legend>
 
           {/* Campos fijos */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: ".85rem",
-            marginBottom: "1.5rem"
-          }}>
-            {camposFijos.map(({key,label}) => (
-              <div key={key}>
-                <label
-                  htmlFor={`${dia}-extra-${key}`}
-                  style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}
-                >
-                  {label}
-                </label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginBottom: 16 }}>
+            {camposFijos.map(({ key, label }) => (
+              <div key={key} style={{ minWidth: 140, flex: 1 }}>
+                <label htmlFor={`${dia}-${key}`} style={{ display: "block", fontWeight: "600", marginBottom: 3 }}>{label}:</label>
                 <input
-                  type={key === "despertarse" || key === "dormirse" ? "time" : "time"}
-                  id={`${dia}-extra-${key}`}
+                  type="time"
+                  id={`${dia}-${key}`}
                   value={extrasPorDia[dia][key]}
-                  onChange={(e) =>
-                    manejarCambioExtra(dia, key, e.target.value)
-                  }
+                  onChange={e => manejarCambioFijo(dia, key, e.target.value)}
                   style={{ width: "100%", padding: "6px", fontSize: "14px" }}
                   required
                 />
@@ -357,113 +512,64 @@ export default function HorarioForms({ horarioExistente = null, onClose, onRefre
             ))}
           </div>
 
-          {/* Actividades agregables ("extra") */}
-          <h4 style={{marginBottom: "10px", marginTop: "1.25rem"}}>Actividades/Materias</h4>
-          {datos[dia].map((actividad, idx) => {
-            const color =
-              materias.find((m) => m.nombre === actividad.materia)?.color || "#f3f4f6";
-            return (
-              <div
-                key={idx}
-                style={{
-                  backgroundColor: color,
-                  padding: "1rem",
-                  borderRadius: "6px",
-                  marginBottom: "1rem"
-                }}
-              >
-                <label
-                  htmlFor={`${dia}-materia-${idx}`}
-                  style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}
-                >
-                  Materia o actividad:
-                </label>
+          {/* Actividades extra/materias */}
+          <h4 style={{ margin: "16px 0 8px 0" }}>Materias/actividades programadas</h4>
+          {datos[dia].map((actividad, idx) => (
+            <div key={idx} style={{ display: "flex", gap: 13, alignItems: "center", marginBottom: 7, background: "#f3f3f36b", padding: 9, borderRadius: 5 }}>
+              <div style={{ flex: 2 }}>
+                <label htmlFor={`${dia}-materia-${idx}`} style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}>Materia:</label>
                 <select
                   id={`${dia}-materia-${idx}`}
                   value={actividad.materia}
-                  onChange={(e) =>
-                    manejarCambioActividad(dia, idx, "materia", e.target.value)
-                  }
-                  style={{ width: "100%", padding: "6px", fontSize: "14px" }}
+                  onChange={e => manejarCambioActividad(dia, idx, "materia", e.target.value)}
                   required
+                  style={{ width: "100%", padding: "5px", fontSize: "14px" }}
                 >
-                  <option value="">Selecciona una materia</option>
-                  {materias.map((m) => (
-                    <option key={m.nombre} value={m.nombre}>
-                      {m.nombre}
-                    </option>
+                  <option value="">Selecciona</option>
+                  {opcionesMaterias.map(m => (
+                    <option value={m.nombre} key={m.nombre}>{m.nombre}</option>
                   ))}
                 </select>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "1rem",
-                    marginTop: "1rem"
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <label
-                      htmlFor={`${dia}-horaInicio-${idx}`}
-                      style={{
-                        fontWeight: "600",
-                        display: "block",
-                        marginBottom: "4px"
-                      }}
-                    >
-                      Hora inicio:
-                    </label>
-                    <input
-                      type="time"
-                      id={`${dia}-horaInicio-${idx}`}
-                      value={actividad.horaInicio}
-                      onChange={(e) =>
-                        manejarCambioActividad(dia, idx, "horaInicio", e.target.value)
-                      }
-                      style={{ width: "100%", padding: "6px", fontSize: "14px" }}
-                      required
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label
-                      htmlFor={`${dia}-horaFin-${idx}`}
-                      style={{
-                        fontWeight: "600",
-                        display: "block",
-                        marginBottom: "4px"
-                      }}
-                    >
-                      Hora fin:
-                    </label>
-                    <input
-                      type="time"
-                      id={`${dia}-horaFin-${idx}`}
-                      value={actividad.horaFin}
-                      onChange={(e) =>
-                        manejarCambioActividad(dia, idx, "horaFin", e.target.value)
-                      }
-                      style={{ width: "100%", padding: "6px", fontSize: "14px" }}
-                      required
-                    />
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => eliminarActividad(dia, idx)}
-                  style={{
-                    marginTop: "1rem",
-                    backgroundColor: "#ef4444",
-                    color: "white",
-                    border: "none",
-                    padding: "0.25rem 0.5rem",
-                    borderRadius: "4px",
-                    cursor: "pointer"
-                  }}
-                >
-                  🗑️ Eliminar
-                </button>
               </div>
-            );
-          })}
+              <div style={{ flex: 1 }}>
+                <label htmlFor={`${dia}-horaInicio-${idx}`} style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}>Hora inicio:</label>
+                <input
+                  type="time"
+                  id={`${dia}-horaInicio-${idx}`}
+                  value={actividad.horaInicio}
+                  onChange={e => manejarCambioActividad(dia, idx, "horaInicio", e.target.value)}
+                  style={{ width: "100%", padding: "6px", fontSize: "14px" }}
+                  required
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor={`${dia}-horaFin-${idx}`} style={{ fontWeight: "600", display: "block", marginBottom: "4px" }}>Hora fin:</label>
+                <input
+                  type="time"
+                  id={`${dia}-horaFin-${idx}`}
+                  value={actividad.horaFin}
+                  onChange={e => manejarCambioActividad(dia, idx, "horaFin", e.target.value)}
+                  style={{ width: "100%", padding: "6px", fontSize: "14px" }}
+                  required
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => eliminarActividad(dia, idx)}
+                style={{
+                  marginTop: "1rem",
+                  backgroundColor: "#ef4444",
+                  color: "white",
+                  border: "none",
+                  padding: "0.25rem 0.5rem",
+                  borderRadius: "4px",
+                  cursor: "pointer"
+                }}
+              >
+                🗑️ Eliminar
+              </button>
+            </div>
+          ))}
           <button
             type="button"
             onClick={() => agregarActividad(dia)}
@@ -480,7 +586,6 @@ export default function HorarioForms({ horarioExistente = null, onClose, onRefre
           </button>
         </fieldset>
       ))}
-
       <button
         type="submit"
         style={{
