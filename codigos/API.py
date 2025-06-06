@@ -2,13 +2,19 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
 import pickle
-from auxi import KNNModel, nuevo_df, materias_frecuencias, etiquetar
+from auxi import (
+    KNNModel,
+    nuevo_df,
+    materias_frecuencias,
+    etiquetar,
+    obtener_tiempo_libre,
+    asignar_tareas,
+    predecir_individuo,
+    asignar_horarios_estudio,
+)
 from statistics import mode
-from sklearn.neighbors import KNeighborsRegressor
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 
 
 app = Flask(__name__)
@@ -43,6 +49,7 @@ n_df["Semana"] = n_df.apply(
     axis=1,
 )
 
+n_df.drop(columns=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"], inplace=True)
 
 tiempo_efectivo = {
     "8.5": n_df[n_df["Semana"] == 8.5]["Tiempo al día"].mean(),
@@ -60,26 +67,35 @@ df_et = etiquetar(n_df, tiempo_efectivo)
 
 
 X_train, X_test, y_train, y_test = modelosKnn.preprocess(n_df, df_et)
-predicciones = {}
 for model in modelosKnn.models.keys():
     modelosKnn.fit(model, X_train, y_train["Et_" + model])
 
 
 @app.route("/predecir", methods=["POST"])
 def predecir():
-    data = request.get_json()
-    modelo = data.get("modelo")
-    features = data.get("features")
-
-    if modelo not in modelosKnn.models:
-        return jsonify({"error": "Modelo no válido"}), 400
-
-    X = pd.DataFrame([features])
-    X_scaled = pd.DataFrame(modelosKnn.scaler.transform(X), columns=X.columns)
-
     try:
-        pred = modelosKnn.predict(modelo, X_scaled)
-        return jsonify({"prediccion": pred.tolist()})
+        data = request.get_json()
+        tiempo_libre_por_dia = obtener_tiempo_libre(
+            data.get("tiempo_libre"), frecuencias
+        )
+        tiempo_total = 0
+        for dia in tiempo_libre_por_dia["tiempo_total_libre"].keys():
+            tiempo_total += tiempo_libre_por_dia["tiempo_total_libre"][dia]
+        tareas = asignar_tareas(data.get("tareas"), tiempo_total, frecuencias)
+        materias = predecir_individuo(
+            tareas["tiempo_restante"] / 5,
+            tiempo_libre_por_dia["materias"],
+            tiempo_libre_por_dia["momento_mas_libre"],
+            modelosKnn,
+        )
+        horarios = asignar_horarios_estudio(
+            materias,
+            tiempo_libre_por_dia["periodos_libres"],
+            tareas["por_actividad"],
+            tiempo_libre_por_dia["tiempo_total_libre"],
+        )
+
+        return jsonify(horarios)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
