@@ -25,6 +25,13 @@ export default function Schedules() {
 
   const fetchHorario = async () => {
     setCargando(true);
+    const isObjectEmpty = (obj) => {
+      return Object.values(obj).every(
+        value => typeof value === 'object' && value !== null 
+          ? Object.keys(value).length === 0 
+          : !value
+      );
+    };
     try {
       const userId = auth.currentUser?.uid;
       if (!userId) {
@@ -32,7 +39,8 @@ export default function Schedules() {
         return;
       }
       const horario = await bajarHorario(userId);
-      if (horario) {
+      console.log("Horario obtenido:", horario);
+      if (horario && !isObjectEmpty(horario)) {
         setTieneHorario(true);
         setHorarioExistente(horario);
       } else {

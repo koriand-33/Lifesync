@@ -1,4 +1,5 @@
 import React from "react";
+import { useEffect } from "react";
 
 const dias = ["Lun", "Mar", "Mié", "Jue", "Vie"];
 
@@ -8,6 +9,10 @@ export default function HorarioVista({ horario, onEditar }) {
   const { materias, clases, extras } = horario;
 
   const getColor = (nombre) => materias?.[nombre]?.color || "#f3f4f6";
+
+    useEffect(() => {
+        console.log("HorarioVista renderizado con datos:", horario);
+    }, [horario]);
 
   return (
     <div className="max-w-4xl mx-auto p-4">

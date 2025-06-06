@@ -53,8 +53,8 @@ function agruparActividadesPorDia(extrasPorDia) {
     if (despertar && dormir) {
       actividadesPorDia[dia].push({
         actividad: 'Dormirse',
-        inicio: despertar,
-        fin: dormir
+        inicio: dormir,
+        fin: despertar
       });
     }
   }
@@ -64,11 +64,11 @@ function agruparActividadesPorDia(extrasPorDia) {
 
 const materiasIniciales = [
   { nombre: "Visión Artificial", color: "#facc15" },
-  { nombre: "Teoría de la computación", color: "#ef4444" },
-  { nombre: "Procesamiento de señales", color: "#3bcfd4" },
-  { nombre: "Tecnologías de Lenguaje Natural", color: "#f59e0b" },
-  { nombre: "Algoritmos bioinspirados", color: "#133a94" },
-  { nombre: "Aprendizaje Máquina", color: "#10b9a0" }
+  { nombre: "Teoría de la Computación", color: "#ef4444" },
+  { nombre: "Procesamiento de Señales", color: "#3bcfd4" },
+  { nombre: "Tecnologías del Lenguaje Natural", color: "#f59e0b" },
+  { nombre: "Algoritmos Bioinspirados", color: "#133a94" },
+  { nombre: "Aprendizaje de Máquina", color: "#10b9a0" }
 ];
 
 const dias = ["Lun", "Mar", "Mié", "Jue", "Vie"];
