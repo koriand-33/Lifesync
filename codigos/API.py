@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
 import pickle
+from datetime import datetime
 from auxi import (
     KNNModel,
     nuevo_df,
@@ -11,6 +12,7 @@ from auxi import (
     asignar_tareas,
     predecir_individuo,
     asignar_horarios_estudio,
+    mapeo_dias,
 )
 from statistics import mode
 import numpy as np
@@ -74,14 +76,15 @@ for model in modelosKnn.models.keys():
 @app.route("/predecir", methods=["POST"])
 def predecir():
     try:
+        ahora = datetime.now()
+        hora = str(ahora.strftime("%H:%M"))
+        dia_semana = str(ahora.strftime("%A"))
         data = request.get_json()
-        tiempo_libre_por_dia = obtener_tiempo_libre(
-            data.get("tiempo_libre"), frecuencias
-        )
+        tiempo_libre_por_dia = obtener_tiempo_libre(data, frecuencias)
         tiempo_total = 0
         for dia in tiempo_libre_por_dia["tiempo_total_libre"].keys():
             tiempo_total += tiempo_libre_por_dia["tiempo_total_libre"][dia]
-        tareas = asignar_tareas(data.get("tareas"), tiempo_total, frecuencias)
+        tareas = asignar_tareas(data, tiempo_total, frecuencias)
         materias = predecir_individuo(
             tareas["tiempo_restante"] / 5,
             tiempo_libre_por_dia["materias"],
@@ -93,6 +96,8 @@ def predecir():
             tiempo_libre_por_dia["periodos_libres"],
             tareas["por_actividad"],
             tiempo_libre_por_dia["tiempo_total_libre"],
+            dia_actual=mapeo_dias[dia_semana],
+            hora_actual=hora,
         )
 
         return jsonify(horarios)

@@ -10,6 +10,17 @@ from copy import deepcopy
 from statistics import mode
 
 
+mapeo_dias = {
+    "Monday": "lunes",
+    "Tuesday": "martes",
+    "Wednesday": "miércoles",
+    "Thursday": "jueves",
+    "Friday": "viernes",
+    "Saturday": "sábado",
+    "Sunday": "domingo",
+}
+
+
 def leer_json(ruta: str):
     with open(ruta, "r", encoding="utf-8") as archivo:
         datos = json.load(archivo)
@@ -257,12 +268,13 @@ def asignar_horarios_estudio(
     periodos_libres: dict,
     tareas_actividad: dict,
     tiempo_total_libre: dict,
+    dia_actual: str,
+    hora_actual: str,
 ):
     horarios_materias = {}
     horarios_tareas = {}
 
     # Mapeo de días
-    dias_semana_orden = ["Lun", "Mar", "Mié", "Jue", "Vie"]
     dias_completos = {
         "lunes": "Lun",
         "martes": "Mar",
@@ -273,6 +285,8 @@ def asignar_horarios_estudio(
         "domingo": "Dom",
     }
 
+    dias_orden_original = ["Lun", "Mar", "Mié", "Jue", "Vie"]
+
     def hora_a_decimal(hora_str):
         partes = hora_str.split(":")
         return int(partes[0]) + int(partes[1]) / 60
@@ -282,7 +296,120 @@ def asignar_horarios_estudio(
         minutos = int((decimal - horas) * 60)
         return f"{horas:02d}:{minutos:02d}"
 
-    # PASO 1: Calcular tiempo total necesario
+    # PASO 1: Determinar el orden de días basado en el día actual
+    dia_actual_abrev = dias_completos[dia_actual]
+    hora_actual_decimal = hora_a_decimal(hora_actual)
+
+    # Si es sábado o domingo, usar la lógica tradicional (lunes a viernes)
+    if dia_actual_abrev in ["Sab", "Dom"]:
+        dias_semana_orden = dias_orden_original.copy()
+        ajustar_primer_dia = False
+        incluir_proxima_semana = False
+    else:
+        # Reordenar días empezando desde hoy
+        indice_actual = dias_orden_original.index(dia_actual_abrev)
+        dias_semana_orden = (
+            dias_orden_original[indice_actual:] + dias_orden_original[:indice_actual]
+        )
+        ajustar_primer_dia = True
+        incluir_proxima_semana = True
+
+    # PASO 2: Agregar días de la próxima semana si es necesario
+    if incluir_proxima_semana:
+        # Agregar todos los días de la próxima semana hasta el día actual (inclusive)
+        indice_actual = dias_orden_original.index(dia_actual_abrev)
+        dias_proxima_semana = dias_orden_original[
+            : indice_actual + 1
+        ]  # Incluir el día actual
+        dias_proxima_semana_con_sufijo = [f"{dia}_p" for dia in dias_proxima_semana]
+        dias_semana_orden.extend(dias_proxima_semana_con_sufijo)
+
+    # FUNCIONALIDAD EXTRA: Eliminar duplicados (excepto el día actual)
+    def eliminar_duplicados_excepto_actual(lista_dias, dia_actual_abrev):
+        """Elimina días duplicados, priorizando los que terminan en '_p', excepto el día actual"""
+        dias_finales = []
+        dias_base_procesados = set()
+
+        for dia in lista_dias:
+            dia_base = dia[:-2] if dia.endswith("_p") else dia
+
+            # Si es el día actual, siempre incluirlo (no eliminar duplicados)
+            if dia_base == dia_actual_abrev:
+                dias_finales.append(dia)
+            elif dia_base not in dias_base_procesados:
+                # Primera vez que vemos este día base (y no es el día actual)
+                dias_finales.append(dia)
+                dias_base_procesados.add(dia_base)
+            elif dia.endswith("_p"):
+                # Si ya existe el día base pero este termina en "_p", reemplazar
+                for i, dia_existente in enumerate(dias_finales):
+                    dia_existente_base = (
+                        dia_existente[:-2]
+                        if dia_existente.endswith("_p")
+                        else dia_existente
+                    )
+                    if dia_existente_base == dia_base and not dia_existente.endswith(
+                        "_p"
+                    ):
+                        dias_finales[i] = dia  # Reemplazar con la versión "_p"
+                        break
+
+        return dias_finales
+
+    # Aplicar la eliminación de duplicados
+    if incluir_proxima_semana:
+        dias_semana_orden = eliminar_duplicados_excepto_actual(
+            dias_semana_orden, dia_actual_abrev
+        )
+
+    # PASO 3: Ajustar períodos del primer día (día actual) según la hora actual
+    def ajustar_periodos_primer_dia(periodos_dia, hora_limite):
+        """Ajusta los períodos del primer día para empezar desde la hora actual"""
+        periodos_ajustados = []
+        hora_limite_decimal = hora_a_decimal(hora_limite)
+
+        for inicio, fin in periodos_dia:
+            inicio_decimal = hora_a_decimal(inicio)
+            fin_decimal = hora_a_decimal(fin)
+
+            # Si el período es completamente antes de la hora actual, omitirlo
+            if fin_decimal <= hora_limite_decimal:
+                continue
+
+            # Si el período empieza antes de la hora actual, ajustar el inicio
+            if inicio_decimal < hora_limite_decimal:
+                inicio_ajustado = decimal_a_hora(hora_limite_decimal)
+            else:
+                inicio_ajustado = inicio
+
+            periodos_ajustados.append((inicio_ajustado, fin))
+
+        return periodos_ajustados
+
+    def ajustar_periodos_dia_proximo(periodos_dia, hora_limite):
+        """Ajusta los períodos del día de la próxima semana hasta la hora actual"""
+        periodos_ajustados = []
+        hora_limite_decimal = hora_a_decimal(hora_limite)
+
+        for inicio, fin in periodos_dia:
+            inicio_decimal = hora_a_decimal(inicio)
+            fin_decimal = hora_a_decimal(fin)
+
+            # Si el período empieza después de la hora límite, omitirlo
+            if inicio_decimal >= hora_limite_decimal:
+                continue
+
+            # Si el período termina después de la hora límite, ajustar el fin
+            if fin_decimal > hora_limite_decimal:
+                fin_ajustado = decimal_a_hora(hora_limite_decimal)
+            else:
+                fin_ajustado = fin
+
+            periodos_ajustados.append((inicio, fin_ajustado))
+
+        return periodos_ajustados
+
+    # PASO 4: Calcular tiempo total necesario
     tiempo_total_materias = sum(
         float(horas[0]) if isinstance(horas, np.ndarray) else float(horas)
         for horas in horas_materias.values()
@@ -290,12 +417,37 @@ def asignar_horarios_estudio(
     tiempo_total_tareas = sum(tiempo for tiempo, _ in tareas_actividad.values())
     tiempo_necesario_total = tiempo_total_materias + tiempo_total_tareas
 
-    # Calcular tiempo libre total disponible
-    tiempo_libre_total_semana = sum(
-        tiempo_total_libre.get(dia, 0) for dia in dias_semana_orden
-    )
+    # Calcular tiempo libre total disponible (incluyendo próxima semana)
+    tiempo_libre_total_semana = 0
+    for dia in dias_semana_orden:
+        if dia.endswith("_p"):
+            # Día de la próxima semana
+            dia_base = dia[:-2]  # Quitar el "_p"
+            if dia_base == dia_actual_abrev:
+                # Es el mismo día actual pero de la próxima semana
+                periodos_ajustados = ajustar_periodos_dia_proximo(
+                    periodos_libres.get(dia_base, []), hora_actual
+                )
+                tiempo_dia = sum(
+                    hora_a_decimal(fin) - hora_a_decimal(inicio)
+                    for inicio, fin in periodos_ajustados
+                )
+            else:
+                tiempo_dia = tiempo_total_libre.get(dia_base, 0)
+        elif dia == dias_semana_orden[0] and ajustar_primer_dia:
+            # Primer día de esta semana (desde hora actual)
+            periodos_ajustados = ajustar_periodos_primer_dia(
+                periodos_libres.get(dia, []), hora_actual
+            )
+            tiempo_dia = sum(
+                hora_a_decimal(fin) - hora_a_decimal(inicio)
+                for inicio, fin in periodos_ajustados
+            )
+        else:
+            tiempo_dia = tiempo_total_libre.get(dia, 0)
+        tiempo_libre_total_semana += tiempo_dia
 
-    # PASO 2: Reservar tiempo de descanso si es posible
+    # PASO 5: Reservar tiempo de descanso si es posible
     tiempo_descanso_disponible = max(
         0, tiempo_libre_total_semana - tiempo_necesario_total
     )
@@ -304,13 +456,37 @@ def asignar_horarios_estudio(
     if tiempo_descanso_disponible > 0:
         # Distribuir el descanso proporcionalmente entre los días según su tiempo libre
         for dia in dias_semana_orden:
-            if tiempo_total_libre.get(dia, 0) > 0:
-                proporcion = tiempo_total_libre[dia] / tiempo_libre_total_semana
+            if dia.endswith("_p"):
+                # Día de la próxima semana
+                dia_base = dia[:-2]
+                if dia_base == dia_actual_abrev:
+                    periodos_ajustados = ajustar_periodos_dia_proximo(
+                        periodos_libres.get(dia_base, []), hora_actual
+                    )
+                    tiempo_dia = sum(
+                        hora_a_decimal(fin) - hora_a_decimal(inicio)
+                        for inicio, fin in periodos_ajustados
+                    )
+                else:
+                    tiempo_dia = tiempo_total_libre.get(dia_base, 0)
+            elif dia == dias_semana_orden[0] and ajustar_primer_dia:
+                periodos_ajustados = ajustar_periodos_primer_dia(
+                    periodos_libres.get(dia, []), hora_actual
+                )
+                tiempo_dia = sum(
+                    hora_a_decimal(fin) - hora_a_decimal(inicio)
+                    for inicio, fin in periodos_ajustados
+                )
+            else:
+                tiempo_dia = tiempo_total_libre.get(dia, 0)
+
+            if tiempo_libre_total_semana > 0:
+                proporcion = tiempo_dia / tiempo_libre_total_semana
                 tiempo_descanso_por_dia[dia] = tiempo_descanso_disponible * proporcion
             else:
                 tiempo_descanso_por_dia[dia] = 0
 
-    # PASO 3: Crear períodos disponibles después de reservar descanso
+    # PASO 6: Crear períodos disponibles después de reservar descanso
     def reservar_descanso_en_periodo(periodos_dia, tiempo_descanso):
         """Reserva tiempo de descanso al final de los períodos del día"""
         if tiempo_descanso <= 0 or not periodos_dia:
@@ -343,41 +519,70 @@ def asignar_horarios_estudio(
 
     periodos_disponibles = {}
     for dia in dias_semana_orden:
-        if dia in periodos_libres:
-            # Reservar descanso antes de usar los períodos
-            periodos_con_descanso = reservar_descanso_en_periodo(
-                periodos_libres[dia], tiempo_descanso_por_dia.get(dia, 0)
-            )
-            periodos_disponibles[dia] = periodos_con_descanso
+        if dia.endswith("_p"):
+            # Día de la próxima semana
+            dia_base = dia[:-2]
+            if dia_base in periodos_libres:
+                if dia_base == dia_actual_abrev:
+                    # Mismo día pero próxima semana (hasta hora actual)
+                    periodos_base = ajustar_periodos_dia_proximo(
+                        periodos_libres[dia_base], hora_actual
+                    )
+                else:
+                    periodos_base = periodos_libres[dia_base]
+
+                # Reservar descanso
+                periodos_con_descanso = reservar_descanso_en_periodo(
+                    periodos_base, tiempo_descanso_por_dia.get(dia, 0)
+                )
+                periodos_disponibles[dia] = periodos_con_descanso
+            else:
+                periodos_disponibles[dia] = []
         else:
-            periodos_disponibles[dia] = []
+            # Día de esta semana
+            if dia in periodos_libres:
+                # Ajustar el primer día si es necesario
+                if dia == dias_semana_orden[0] and ajustar_primer_dia:
+                    periodos_base = ajustar_periodos_primer_dia(
+                        periodos_libres[dia], hora_actual
+                    )
+                else:
+                    periodos_base = periodos_libres[dia]
+
+                # Reservar descanso
+                periodos_con_descanso = reservar_descanso_en_periodo(
+                    periodos_base, tiempo_descanso_por_dia.get(dia, 0)
+                )
+                periodos_disponibles[dia] = periodos_con_descanso
+            else:
+                periodos_disponibles[dia] = []
 
     def calcular_prioridad(tarea, tiempo_horas, dia_entrega):
         """Calcula la prioridad de una tarea basada en urgencia y duración"""
         dia_entrega_abrev = dias_completos[dia_entrega]
 
-        # Determinar días disponibles para trabajar
-        if dia_entrega_abrev in [
-            "Sab",
-            "Dom",
-            "Lun",
-        ]:  # Lunes tratado como fin de semana
-            dias_disponibles = 5  # Toda la semana laboral
-        elif dia_entrega_abrev in dias_semana_orden[1:]:  # Martes a Viernes
-            indice_entrega = dias_semana_orden.index(dia_entrega_abrev)
-            dias_disponibles = indice_entrega  # Hasta el día anterior
+        # Buscar el día de entrega en el orden actual (incluyendo próxima semana)
+        dias_disponibles = 0
+        for i, dia in enumerate(dias_semana_orden):
+            dia_comparar = dia[:-2] if dia.endswith("_p") else dia
+            if dia_comparar == dia_entrega_abrev:
+                dias_disponibles = i
+                break
         else:
-            dias_disponibles = 5
+            # Si no se encuentra, asumir que es muy lejano
+            dias_disponibles = len(dias_semana_orden)
 
         # Si no tiene días disponibles, máxima prioridad
         if dias_disponibles == 0:
             return 1000
 
         # Factor de urgencia (menos días = más urgente)
-        factor_urgencia = (6 - dias_disponibles) / 5  # 0.2 a 1.0
+        factor_urgencia = (len(dias_semana_orden) + 1 - dias_disponibles) / len(
+            dias_semana_orden
+        )
 
         # Factor de duración (más horas = más prioritario)
-        factor_duracion = min(tiempo_horas / 10, 1.0)  # Normalizar a máximo 1.0
+        factor_duracion = min(tiempo_horas / 10, 1.0)
 
         # Combinar factores (urgencia tiene más peso)
         prioridad = (factor_urgencia * 0.7) + (factor_duracion * 0.3)
@@ -424,7 +629,7 @@ def asignar_horarios_estudio(
 
         return asignaciones, tiempo_restante
 
-    # PASO 4: Priorizar y ordenar tareas
+    # PASO 7: Priorizar y ordenar tareas
     tareas_priorizadas = []
     for tarea, (tiempo_horas, dia_entrega) in tareas_actividad.items():
         prioridad = calcular_prioridad(tarea, tiempo_horas, dia_entrega)
@@ -433,20 +638,18 @@ def asignar_horarios_estudio(
     # Ordenar por prioridad (mayor prioridad primero)
     tareas_priorizadas.sort(key=lambda x: x[0], reverse=True)
 
-    # PASO 5: Asignar tareas según prioridad
+    # PASO 8: Asignar tareas según prioridad
     for prioridad, tarea, tiempo_horas, dia_entrega in tareas_priorizadas:
         # Determinar qué días están disponibles para esta tarea
         dia_entrega_abrev = dias_completos[dia_entrega]
 
-        if dia_entrega_abrev in ["Sab", "Dom", "Lun"]:  # Lunes como próxima semana
-            # Entrega en fin de semana o lunes próximo: puede usar toda la semana laboral
-            dias_disponibles = dias_semana_orden.copy()
-        elif dia_entrega_abrev in dias_semana_orden[1:]:  # Martes a Viernes
-            # Entrega entre martes y viernes: usar hasta el día ANTERIOR
-            indice_entrega = dias_semana_orden.index(dia_entrega_abrev)
-            dias_disponibles = dias_semana_orden[:indice_entrega]
-        else:
-            dias_disponibles = dias_semana_orden.copy()
+        # Encontrar hasta qué día se puede trabajar
+        dias_disponibles = []
+        for dia in dias_semana_orden:
+            dia_comparar = dia[:-2] if dia.endswith("_p") else dia
+            if dia_comparar == dia_entrega_abrev:
+                break
+            dias_disponibles.append(dia)
 
         horarios_tareas[tarea] = {}
         tiempo_restante = tiempo_horas
@@ -469,7 +672,7 @@ def asignar_horarios_estudio(
                 f"Advertencia: No se pudo asignar {tiempo_restante:.2f} horas para {tarea} (entrega {dia_entrega})"
             )
 
-    # PASO 6: Asignar tiempo de estudio de materias
+    # PASO 9: Asignar tiempo de estudio de materias
     for materia, horas_array in horas_materias.items():
         horas_semanales = (
             float(horas_array[0])
@@ -526,6 +729,7 @@ def asignar_horarios_estudio(
         "horarios_materias": horarios_materias,
         "horarios_tareas": horarios_tareas,
         "tiempo_descanso_reservado": tiempo_descanso_por_dia,
+        "orden_dias": dias_semana_orden,  # Para referencia
     }
 
 
@@ -723,7 +927,7 @@ def predecir_individuo(tiempo: float, materias: dict, dias: dict, modelosKnn: KN
     X_df = pd.DataFrame(modelosKnn.scaler.transform(X_df), columns=X_df.columns)
     for model in modelosKnn.models.keys():
 
-        predicciones[model] = modelosKnn.predict(model, X_df)
+        predicciones[model] = modelosKnn.predict(model, X_df) * 5
     return predicciones
 
 
