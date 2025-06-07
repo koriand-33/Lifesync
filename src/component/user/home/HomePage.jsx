@@ -59,7 +59,6 @@ function ActividadDesplegable({ actividad, onMarcarCompletada }) {
         </p>
         <p className="text-sm text-gray-700">{actividad.descripcion}</p>
       </div>
-
       <button
         className="text-blue-600 text-sm underline"
         onClick={() => setAbierto(prev => !prev)}
@@ -69,9 +68,8 @@ function ActividadDesplegable({ actividad, onMarcarCompletada }) {
 
       {abierto && (
         <div className="space-y-3 text-sm">
-          <p><strong>Materia:</strong> {actividad.materia}</p>
+          {actividad.materia && <p><strong>Materia:</strong> {actividad.materia}</p>}
           <p><strong>Fecha:</strong> {actividad.fecha}</p>
-
           {!actividad.completada && (
             <div className="flex gap-3">
               <button
@@ -99,6 +97,39 @@ export default function Page() {
   const [proximas, setProximas] = useState(actividadesProximasIniciales);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showModal, setShowModal] = useState(false);
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [nuevaActividad, setNuevaActividad] = useState({
+    titulo: "",
+    descripcion: "",
+    materia: "",
+    fecha: ""
+  });
+
+  const handleInputNueva = (campo, valor) => {
+    setNuevaActividad(prev => ({ ...prev, [campo]: valor }));
+  };
+
+  const guardarNuevaActividad = () => {
+    if (!nuevaActividad.titulo || !nuevaActividad.fecha) {
+      alert("Título y fecha requeridos");
+      return;
+    }
+
+    setProximas(prev => [
+      {
+        ...nuevaActividad,
+        id: Date.now(),
+        completada: false,
+        materiaId: nuevaActividad.materia === "0" ? 0 : undefined,
+        materia: nuevaActividad.materia === "0" ? "Evento único" : nuevaActividad.materia
+      },
+      ...prev
+    ]);
+
+    setNuevaActividad({ titulo: "", descripcion: "", materia: "", fecha: "" });
+    setShowAddModal(false);
+  };
 
   const abrirEditor = (actividad) => {
     setSelectedTask({ ...actividad });
@@ -144,16 +175,13 @@ export default function Page() {
     <div className='w-full'>
       <h1 className='text-3xl font-bold mt-5 text-gray-800 mb-10'>Hoy</h1>
 
-      {/* Línea de tiempo */}
       <div className="relative flex items-start gap-6 overflow-x-auto pb-16 border-b border-gray-300">
         {horas24.map((hora, index) => {
           const actividad = tasks.find(a => a.hora === hora);
           return (
             <div
               key={index}
-              className={`flex flex-col items-center gap-3 min-w-[80px] relative cursor-pointer select-none ${
-                actividad ? 'hover:bg-gray-200 rounded-lg' : ''
-              }`}
+              className={`flex flex-col items-center gap-3 min-w-[80px] relative cursor-pointer select-none ${actividad ? 'hover:bg-gray-200 rounded-lg' : ''}`}
               onClick={() => actividad && abrirEditor(actividad)}
               title={actividad ? actividad.titulo : ''}
             >
@@ -176,10 +204,75 @@ export default function Page() {
         <img src="/calendario.png" alt="Calendario" className="w-20 h-20 ml-6" />
       </div>
 
-      {/* Actividades próximas */}
+      <div className='flex justify-center my-8'>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded"
+        >
+          + Agregar actividad próxima
+        </button>
+      </div>
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-md p-8 w-[90%] max-w-md">
+            <h2 className="text-xl font-bold mb-4">Nueva actividad próxima</h2>
+            <input
+              type="text"
+              value={nuevaActividad.titulo}
+              onChange={e => handleInputNueva("titulo", e.target.value)}
+              className="border rounded w-full px-3 py-2 mb-3"
+              placeholder="Título"
+            />
+            <label className="text-sm font-medium mb-1 block">Materia</label>
+            <select
+              value={nuevaActividad.materia}
+              onChange={e => handleInputNueva("materia", e.target.value)}
+              className="border rounded w-full px-3 py-2 mb-3"
+            >
+              <option value="">Selecciona una materia</option>
+              <option value="Visión Artificial">Visión Artificial</option>
+              <option value="Procesamiento de Señales">Procesamiento de Señales</option>
+              <option value="Algoritmos Bioinspirados">Algoritmos Bioinspirados</option>
+              <option value="Aprendizaje Máquina">Aprendizaje Máquina</option>
+              <option value="Teoría de la Computación">Teoría de la Computación</option>
+              <option value="Tecnologías de Lenguaje Natural">Tecnologías de Lenguaje Natural</option>
+              <option value="0">Evento único</option>
+            </select>
+            <textarea
+              value={nuevaActividad.descripcion}
+              onChange={e => handleInputNueva("descripcion", e.target.value)}
+              className="border rounded w-full px-3 py-2 mb-3"
+              placeholder="Descripción"
+              rows={3}
+            />
+            <label className='text-sm font-medium'>Fecha de entrega</label>
+            <input
+              type="date"
+              value={nuevaActividad.fecha}
+              onChange={e => handleInputNueva("fecha", e.target.value)}
+              className="border rounded w-full px-3 py-2 mt-1 mb-4"
+            />
+            <div className='flex gap-3'>
+              <button
+                onClick={guardarNuevaActividad}
+                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+              >
+                Agregar
+              </button>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="border-gray-400 border text-gray-700 px-4 py-2 rounded hover:bg-gray-100"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mt-10">
         <h2 className="text-xl font-semibold mb-4">Tareas o actividades próximas</h2>
-
         <div className="space-y-4">
           {proximas.map(actividad => (
             <ActividadDesplegable
@@ -191,12 +284,10 @@ export default function Page() {
         </div>
       </div>
 
-      {/* Modal */}
       {showModal && selectedTask && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-md space-y-4 relative">
             <h2 className="text-xl font-semibold">Editar actividad</h2>
-
             <input
               type="text"
               value={selectedTask.titulo}
@@ -204,7 +295,6 @@ export default function Page() {
               className="border border-gray-300 rounded px-3 py-2 w-full"
               placeholder="Título de la actividad"
             />
-
             <select
               value={selectedTask.hora}
               onChange={e => actualizarTarea('hora', e.target.value)}
@@ -216,7 +306,6 @@ export default function Page() {
                 </option>
               ))}
             </select>
-
             <div className="flex justify-between mt-4 gap-2 flex-wrap">
               <button
                 onClick={guardarCambios}
