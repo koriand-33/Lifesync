@@ -34,8 +34,8 @@ export const bajarInfoPerfil = async (userId) => {
         fotoPerfil: userData.foto_perfil || "/Profile/img_usuario.png",
         rachaActual: userData.racha_actual || 0,
         logros: userData.logros || null,
-        clases: userData.HorarioClasss?.classes || null,
-        HorarioClass: userData.HorarioClasss || null,
+        clases: userData.HorarioSemanal?.materias || null,
+        HorarioClass: userData.HorarioSemanal || null,
         location: userData.location || '',
     };
 

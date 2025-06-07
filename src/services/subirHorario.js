@@ -10,18 +10,16 @@ import { db } from "../../conexion_BD/firebase";
  */
 export const subirHorario = async (userId, materias, clases, extras) => {
   try {
+    console.log("Subiendo horario para el usuario:", userId);
+    console.log("Materias:", materias);
+    console.log("Clases:", clases);
+    console.log("Extras:", extras);
     const userRef = doc(db, "USUARIOS", userId);
 
-    // Convertimos el array de materias en un objeto tipo map
-    const materiasMap = {};
-    materias.forEach(({ nombre, color }) => {
-      materiasMap[nombre] = { color };
-    });
-
     const horarioData = {
-      materias: materiasMap,
-      clases, // ya es un objeto organizado por días
-      extras  // ya es un objeto organizado por días
+      materias,
+      clases, 
+      extras 
     };
 
     await updateDoc(userRef, {

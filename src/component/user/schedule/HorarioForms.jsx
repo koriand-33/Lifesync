@@ -53,8 +53,8 @@ function agruparActividadesPorDia(extrasPorDia) {
     if (despertar && dormir) {
       actividadesPorDia[dia].push({
         actividad: 'Dormirse',
-        inicio: despertar,
-        fin: dormir
+        inicio:dormir,
+        fin: despertar
       });
     }
   }
@@ -68,7 +68,8 @@ const materiasIniciales = [
   { nombre: "Procesamiento de Señales", color: "#3bcfd4" },
   { nombre: "Tecnologías del Lenguaje Natural", color: "#f59e0b" },
   { nombre: "Algoritmos Bioinspirados", color: "#133a94" },
-  { nombre: "Aprendizaje de Máquina", color: "#10b9a0" }
+  { nombre: "Aprendizaje de Máquina", color: "#10b9a0" },
+  // { nombre: "Tareas o Entregas", color: "#888888" }
 ];
 
 const dias = ["Lun", "Mar", "Mié", "Jue", "Vie"];
@@ -83,7 +84,7 @@ const camposFijos = [
   { key: "trayectoIdaFin", label: 'Trayecto ida (fin)' },
   { key: "trayectoVueltaInicio", label: 'Trayecto vuelta (inicio)' },
   { key: "trayectoVueltaFin", label: 'Trayecto vuelta (fin)' },
-  { key: 'dormirse', label: 'Dormirse' }
+  { key: 'dormirse', label: 'Dormirse' },
 ];
 
 export default function HorarioForms({ horarioExistente = null, onClose, onRefresh }) {
@@ -146,8 +147,8 @@ export default function HorarioForms({ horarioExistente = null, onClose, onRefre
           extras.trayectoVueltaInicio = act.inicio;
           extras.trayectoVueltaFin = act.fin;
         } else if (act.actividad === "Dormirse") {
-          extras.despertarse = act.inicio;
-          extras.dormirse = act.fin;
+          extras.despertarse = act.fin;
+          extras.dormirse = act.inicio;
         }
       }
       reconstruido[dia] = extras;
@@ -361,9 +362,13 @@ const manejarCambioFijo = (dia, key, valor) => {
       }
       const despertar = timeToMinutes(extrasPorDia[dia].despertarse);
       const dormir = timeToMinutes(extrasPorDia[dia].dormirse);
+
       if (despertar !== null && dormir !== null) {
-        intervals.push({ ini: despertar, fin: dormir, label: "Dormirse" });
+        // Si "dormir" es anterior a "despertar" (ej. 23:00 < 6:44), suma 24 horas al fin
+        const finSueño = dormir < despertar ? dormir + 1440 : dormir;
+        intervals.push({ ini: dormir, fin: finSueño, label: "Dormirse" });
       }
+
       for (let idx = 0; idx < datos[dia].length; idx++) {
         const act = datos[dia][idx];
         const hI = timeToMinutes(act.horaInicio);
@@ -387,15 +392,28 @@ const manejarCambioFijo = (dia, key, valor) => {
     // Agrupamos materias fijas y extra
     const materiasAll = [...materiasFijas, ...materiasExtra];
     const materiasObj = {};
-    for (const m of materiasAll) materiasObj[m.nombre] = { color: m.color };
+    // for (const m of materiasAll) materiasObj[m.nombre] = { color: m.color };
+    // Asignar importancia a materias fijas (ordenadas, 1 = más importante)
+    materiasFijas.forEach((m, idx) => {
+      materiasObj[m.nombre] = {
+        color: m.color,
+        importancia: materiasFijas.length - idx // de 6 a 1
+      };
+    });
+
+    // Materias extra no tienen importancia asignada
+    materiasExtra.forEach((m) => {
+      materiasObj[m.nombre] = { color: m.color };
+    });
+    // Añadimos la materia de Tareas o Entregas
+    // Añadir la materia "Tareas o Entregas" si no existe
+    if (!materiasObj["Eventos"]) {
+      materiasObj["Eventos"] = { color: "#888888" };
+    }
+
     const extrasAgrupadas = agruparActividadesPorDia(extrasPorDia);
 
-    await subirHorario({
-      uid: auth.currentUser.uid,
-      materias: materiasObj,
-      clases: datos,
-      extras: extrasAgrupadas
-    });
+    await subirHorario(auth.currentUser.uid, materiasObj, datos, extrasAgrupadas);
 
     if (onRefresh) onRefresh();
     if (onClose) onClose();
@@ -418,11 +436,29 @@ const manejarCambioFijo = (dia, key, valor) => {
             onDragOver={e => { e.preventDefault(); onDragOver(idx); }}
             onDragEnd={onDragEnd}
             style={{
-              display: "flex", gap: "6px", alignItems: "center", marginBottom: 6,
-              background: dragIndex === idx ? "#ddeeff" : "transparent",
+              display: "flex",
+              gap: "10px",
+              alignItems: "center",
+              marginBottom: 6,
+              background: dragIndex === idx ? "#ddeeff" : "#f9fafb",
+              border: "1px solid #ccc",
+              padding: "8px",
+              borderRadius: "6px",
               cursor: "grab"
             }}
+            className="hover:bg-gray-100 transition-colors duration-200"
           >
+            <span
+              title="Arrastra para reordenar"
+              style={{
+                fontSize: "20px",
+                cursor: "grab",
+                userSelect: "none"
+              }}
+            >
+              ☰
+            </span>
+
             <span style={{
               fontWeight: 700, width: 20,
               color: "#388", textAlign: "right"

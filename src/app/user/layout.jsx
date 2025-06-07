@@ -3,8 +3,14 @@
 import Sidebar from '@/component/user/Sidebar';
 import NavbarHome from '@/component/user/NavbarHome';
 import Protegido from '@/hooks/Protegido';
+import { useEffect } from 'react';
+import { verificarYActualizarRacha } from '@/services/racha';
 
 export default function UsuarioLayout({ children }) {
+  useEffect(() => {
+    verificarYActualizarRacha();
+  }, []);
+
   return (
     <Protegido>
       <div className="flex justify-center items-center">

@@ -1,47 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState,useEffect  } from 'react';
 import { useRouter } from 'next/navigation';
+import { auth } from '../../../../conexion_BD/firebase';
+import { bajarTareas } from '@/services/bajarTareas';
+import { subirTarea } from '@/services/subirTarea';
+import { eliminarTarea } from '@/services/eliminarTarea';
+import { Timestamp } from 'firebase/firestore';
 
 const horas24 = Array.from({ length: 24 }, (_, i) => {
   const h = i.toString().padStart(2, '0');
   return `${h}:00`;
 });
 
-const actividadesIniciales = [
-  { id: 1, titulo: "Reunión equipo", hora: "08:00", completada: false },
-  { id: 2, titulo: "Revisión de código", hora: "11:00", completada: false },
-  { id: 3, titulo: "Almuerzo", hora: "13:00", completada: false },
-  { id: 4, titulo: "Llamada cliente", hora: "16:00", completada: false },
-  { id: 5, titulo: "Reporte diario", hora: "20:00", completada: false },
-];
-
-const actividadesProximasIniciales = [
-  {
-    id: 101,
-    titulo: "Entrega de proyecto",
-    materia: "Algoritmos Bioinspirados",
-    descripcion: "Finalizar y subir el proyecto final antes del viernes.",
-    fecha: "2025-06-07",
-    completada: false
-  },
-  {
-    id: 102,
-    titulo: "Examen parcial",
-    materia: "Procesamiento de Señales",
-    descripcion: "Estudiar temas 1 al 4. El examen es el lunes.",
-    fecha: "2025-06-10",
-    completada: false
-  },
-  {
-    id: 103,
-    titulo: "Preparar presentación",
-    materia: "Visión Artificial",
-    descripcion: "Revisar los papers y preparar diapositivas.",
-    fecha: "2025-06-05",
-    completada: false
-  }
-];
 
 function ActividadDesplegable({ actividad, onMarcarCompletada }) {
   const [abierto, setAbierto] = useState(false);
@@ -93,8 +64,8 @@ function ActividadDesplegable({ actividad, onMarcarCompletada }) {
 }
 
 export default function Page() {
-  const [tasks, setTasks] = useState(actividadesIniciales);
-  const [proximas, setProximas] = useState(actividadesProximasIniciales);
+  const [tasks, setTasks] = useState([]);
+  const [proximas, setProximas] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
@@ -106,23 +77,55 @@ export default function Page() {
     fecha: ""
   });
 
+  useEffect(() => {
+    const fetchTareas = async () => {
+      const userId = auth.currentUser?.uid;
+      if (!userId) return;
+
+      const tareas = await bajarTareas(userId);
+
+      const tareasConId = tareas.map((tarea, index) => ({
+        ...tarea,
+        id: index + 1,
+        hora: '08:00', 
+        completada: false,
+      }));
+
+      setProximas(tareasConId);
+    };
+
+    fetchTareas();
+  }, []);
+
+
   const handleInputNueva = (campo, valor) => {
     setNuevaActividad(prev => ({ ...prev, [campo]: valor }));
   };
 
-  const guardarNuevaActividad = () => {
+  const guardarNuevaActividad = async () => {
     if (!nuevaActividad.titulo || !nuevaActividad.fecha) {
       alert("Título y fecha requeridos");
       return;
     }
 
+    const userId = auth.currentUser?.uid;
+    if (!userId) return;
+
+    const tarea = {
+      titulo: nuevaActividad.titulo,
+      descripcion: nuevaActividad.descripcion,
+      materia: nuevaActividad.materia === "0" ? "Evento único" : nuevaActividad.materia,
+      fecha: nuevaActividad.fecha,
+    };
+
+    await subirTarea(userId, tarea);
+
     setProximas(prev => [
       {
-        ...nuevaActividad,
+        ...tarea,
         id: Date.now(),
         completada: false,
-        materiaId: nuevaActividad.materia === "0" ? 0 : undefined,
-        materia: nuevaActividad.materia === "0" ? "Evento único" : nuevaActividad.materia
+        hora: '08:00',
       },
       ...prev
     ]);
@@ -130,6 +133,7 @@ export default function Page() {
     setNuevaActividad({ titulo: "", descripcion: "", materia: "", fecha: "" });
     setShowAddModal(false);
   };
+
 
   const abrirEditor = (actividad) => {
     setSelectedTask({ ...actividad });
@@ -149,10 +153,16 @@ export default function Page() {
     setShowModal(false);
   };
 
-  const eliminarTarea = () => {
+  const eliminarTareaFirebase = async () => {
+    const userId = auth.currentUser?.uid;
+    if (!userId) return;
+
+    await eliminarTarea(userId, selectedTask.titulo);
     setTasks(prev => prev.filter(t => t.id !== selectedTask.id));
+    setProximas(prev => prev.filter(t => t.id !== selectedTask.id));
     setShowModal(false);
   };
+
 
   const marcarComoCompletada = () => {
     setTasks(prev =>
@@ -320,7 +330,7 @@ export default function Page() {
                 Marcar como completada
               </button>
               <button
-                onClick={eliminarTarea}
+                onClick={eliminarTareaFirebase}
                 className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 w-full sm:w-auto"
               >
                 Eliminar

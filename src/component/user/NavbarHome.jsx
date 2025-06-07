@@ -33,7 +33,7 @@ const Navbar = () => {
 
   const navItems = [
     { name: 'Home', href: '/user/home', icon: HomeIcon },
-    { name: 'Calendar', href: '/user/horario', icon: CalendarIcon },
+    { name: 'Calendar', href: '/user/calendario', icon: CalendarIcon },
     { name: 'Schedules', href: '/user/schedules', icon: ClockIcon },
     { name: 'Perfil', href: '/user/profile', icon: UserIcon },
   ];

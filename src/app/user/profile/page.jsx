@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, Calendar, Settings, Edit3, Camera, Award, Activity, Users } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Calendar, Settings, Edit3, Camera, Award, Activity, Users,GraduationCap } from 'lucide-react';
 import {
     PencilSquareIcon,
     PaperAirplaneIcon,
@@ -105,8 +105,8 @@ const ProfilePage = () => {
 
   const stats = [
     { 
-      icon: Activity, 
-      label: 'Actividades', 
+      icon: GraduationCap, 
+      label: 'Materias', 
       value: userInfo.clases ? Object.keys(userInfo.clases).length : 0 
     },
     { 
