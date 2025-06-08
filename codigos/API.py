@@ -94,13 +94,15 @@ def predecir():
         horarios = asignar_horarios_estudio(
             materias,
             tiempo_libre_por_dia["periodos_libres"],
-            tareas["por_actividad"],
+            tareas,
             tiempo_libre_por_dia["tiempo_total_libre"],
             dia_actual=mapeo_dias[dia_semana],
             hora_actual=hora,
+            tiempo_sabado=2,
+            tiempo_domingo=2,
         )
 
-        return jsonify(horarios)
+        return jsonify(data | horarios)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
