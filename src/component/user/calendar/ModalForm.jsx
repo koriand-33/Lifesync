@@ -1,16 +1,47 @@
-// components/ModalForm.js
 import { useState, useEffect } from 'react';
 import { subirTarea } from '@/services/subirTarea';
 import { eliminarTarea } from '@/services/eliminarTarea';
 import { auth } from '../../../../conexion_BD/firebase';
-
+import { format } from 'date-fns';
 
 const ModalForm = ({ date, event, onClose, onSave, onDelete, materias }) => {
+
+  useEffect(() => {
+    console.log("Datos completos del evento:", event);
+    console.log("Hora recibida:", event?.hora, "| Hora en extendedProps:", event?.extendedProps?.hora);
+  }, [event]);
+  
+  const normalizeEventDate = (event) => {
+    if (!event) return { date: '', time: '' };
+    
+    // Si tenemos startStr (formato ISO)
+    if (event.startStr) {
+      const [date, timePart] = event.startStr.split('T');
+      const time = timePart ? timePart.substring(0, 5) : '';
+      return { date, time };
+    }
+    
+    // Si tenemos start (objeto Date)
+    if (event.start) {
+      const date = format(event.start, 'yyyy-MM-dd');
+      const time = format(event.start, 'HH:mm');
+      return { date, time };
+    }
+    
+    return { date: '', time: '' };
+  };
+
+  const { date: eventDate, time: eventTime } = normalizeEventDate(event);
+
   const [nuevaActividad, setNuevaActividad] = useState({
     titulo: event?.title || '',
     materia: event?.extendedProps?.materia || '',
-    descripcion: event?.title?.replace(/^Tarea:\s*/, '') || '',
-    fecha: event?.startStr?.split('T')[0] || date || '',
+    descripcion: event?.extendedProps?.description || '',
+    fecha: eventDate || date || '',
+    hora: event?.hora || event?.extendedProps?.hora || '',
+    allDay: event?.allDay || false,
+    duracion: event?.extendedProps?.duracion || '', // Nuevo campo
+    dificultad: event?.extendedProps?.dificultad || '' // Nuevo campo
   });
 
   const handleInputNueva = (campo, valor) => {
@@ -21,43 +52,83 @@ const guardarNuevaActividad = async () => {
   const userId = auth.currentUser?.uid;
   if (!userId) return alert("No hay usuario autenticado");
 
+  // Validación de campos requeridos
+  if (!nuevaActividad.titulo.trim()) {
+    return alert('El título es requerido');
+  }
+
+  if (!nuevaActividad.fecha) {
+    return alert('La fecha es requerida');
+  }
+
+  if (!nuevaActividad.duracion) {
+    return alert('La duración estimada es requerida');
+  }
+
+  if (!nuevaActividad.dificultad) {
+    return alert('La dificultad es requerida');
+  }
+
+  // Validación de valores numéricos
+  if (isNaN(nuevaActividad.duracion) || parseInt(nuevaActividad.duracion) <= 0) {
+    return alert('La duración debe ser un número positivo');
+  }
+
+  if (isNaN(nuevaActividad.dificultad) || 
+      parseInt(nuevaActividad.dificultad) < 1 || 
+      parseInt(nuevaActividad.dificultad) > 10) {
+    return alert('La dificultad debe estar entre 1 y 10');
+  }
+
+  // Si no hay hora especificada, usar 23:59 como default
+  const horaEntrega = nuevaActividad.hora || '23:59';
+  
   const tarea = {
     titulo: nuevaActividad.titulo,
     descripcion: nuevaActividad.descripcion,
-    materia: nuevaActividad.materia,
+    materia: nuevaActividad.materia || 'Evento',
     fecha: nuevaActividad.fecha,
+    hora: horaEntrega, 
+    fechaCompleta: `${nuevaActividad.fecha}T${horaEntrega}:00`,
+    duracion: parseInt(nuevaActividad.duracion), // Ahora siempre tiene valor
+    dificultad: parseInt(nuevaActividad.dificultad) // Ahora siempre tiene valor
   };
 
   await subirTarea(userId, tarea);
-
-  onSave?.(tarea); // si usas onSave para actualizar el frontend
+  onSave?.(tarea);
   onClose();
 };
-
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-md p-8 w-[90%] max-w-md">
         <div className='w-full flex justify-end'>
           {event && (
-            <button
-              onClick={async () => {
-                const userId = auth.currentUser?.uid;
-                if (!userId) return alert("No hay usuario autenticado");
+              <button
+                onClick={async () => {
+                  const userId = auth.currentUser?.uid;
+                  if (!userId) return alert("No hay usuario autenticado");
 
-                await eliminarTarea(userId, nuevaActividad.titulo);
-                onDelete?.(); // para refrescar el frontend si lo necesitas
-                onClose();
-              }}
-              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-            >
-              Eliminar
-            </button>
-          )}
+                  // Usa event.title que debería contener el nombre exacto de Firebase
+                  await eliminarTarea(userId, event.title); 
+                  onDelete?.();
+                  onClose();
+                }}
+                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+              >
+                Eliminar
+              </button>
+            )}
         </div>
-        <h2 className="text-xl font-bold mb-4 flex justify-center items-center">{event ? 'Editar actividad' : 'Nueva actividad'}</h2>
-        <p className='my-4'>Si es una tarea o evento ageno a tus materias registradas usa la Materia <span className='font-semibold'>"Evento"</span></p>
+        <h2 className="text-xl font-bold mb-4 flex justify-center items-center">
+          {event ? 'Editar actividad' : 'Nueva actividad'}
+        </h2>
+        <p className='my-4'>
+          Si es una tarea o evento ajeno a tus materias registradas usa la Materia 
+          <span className='font-semibold'> "Evento"</span>
+        </p>
 
+        <label className="text-sm font-medium mb-1 block">Evento</label>
         <input
           type="text"
           value={nuevaActividad.titulo}
@@ -88,13 +159,60 @@ const guardarNuevaActividad = async () => {
           rows={3}
         />
 
-        <label className='text-sm font-medium'>Fecha</label>
-        <input
-          type="date"
-          value={nuevaActividad.fecha}
-          onChange={e => handleInputNueva("fecha", e.target.value)}
-          className="border rounded w-full px-3 py-2 mt-1 mb-4"
-        />
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className='text-sm font-medium block'>Fecha</label>
+            <input
+              type="date"
+              value={nuevaActividad.fecha}
+              onChange={e => handleInputNueva("fecha", e.target.value)}
+              className="border rounded w-full px-3 py-2 mt-1"
+            />
+          </div>
+          
+          <div>
+            <label className='text-sm font-medium block'>Hora de entrega (opcional)</label>
+            <input
+              type="time"
+              value={nuevaActividad.hora}
+              onChange={e => handleInputNueva("hora", e.target.value)}
+              className="border rounded w-full px-3 py-2 mt-1"
+            />
+            <p className="text-xs text-gray-500 mt-1">Si no especificas hora, se usará 23:59</p>
+          </div>
+        </div>
+
+        {/* Nuevos campos añadidos aquí */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className='text-sm font-medium block'>Duración (minutos)</label>
+            <input
+              type="number"
+              min="1"
+              value={nuevaActividad.duracion}
+              onChange={e => handleInputNueva("duracion", e.target.value)}
+              className="border rounded w-full px-3 py-2 mt-1"
+              placeholder="Ej. 60"
+            />
+          </div>
+          
+          <div>
+            <label className='text-sm font-medium block'>Dificultad (1-10)</label>
+            <select
+              value={nuevaActividad.dificultad}
+              onChange={e => handleInputNueva("dificultad", e.target.value)}
+              className="border rounded w-full px-3 py-2 mt-1"
+            >
+              <option value="">Seleccionar</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
+                <option key={num} value={num}>
+                  {num} {num === 10 && '(Máxima)'}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">10 = Mayor dificultad</p>
+          </div>
+        </div>
 
         <div className='flex gap-3 justify-between'>
           <button

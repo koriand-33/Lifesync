@@ -8,6 +8,7 @@ import { auth } from "../../conexion_BD/firebase";
 export const verificarYActualizarRacha = async () => {
   const user = auth.currentUser;
   if (!user) return;
+  console.log("Verificando racha para el usuario:", user.uid);
 
   const userRef = doc(db, "USUARIOS", user.uid);
   const docSnap = await getDoc(userRef);

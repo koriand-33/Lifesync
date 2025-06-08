@@ -7,6 +7,9 @@ import { bajarTareas } from '@/services/bajarTareas';
 import { subirTarea } from '@/services/subirTarea';
 import { eliminarTarea } from '@/services/eliminarTarea';
 import { Timestamp } from 'firebase/firestore';
+import Loading from '@/component/loading/loading';
+import { bajarHorario } from '@/services/bajarHorario';
+import ModalForm from '../calendar/ModalForm';
 
 const horas24 = Array.from({ length: 24 }, (_, i) => {
   const h = i.toString().padStart(2, '0');
@@ -68,6 +71,8 @@ export default function Page() {
   const [proximas, setProximas] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [horarioExistente, setHorarioExistente] = useState(null);
+  const [cargando, setCargando] = useState(false);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [nuevaActividad, setNuevaActividad] = useState({
@@ -78,20 +83,79 @@ export default function Page() {
   });
 
   useEffect(() => {
-    const fetchTareas = async () => {
-      const userId = auth.currentUser?.uid;
-      if (!userId) return;
+    const fetchTareas = async () => 
+    {
+      setCargando(true);
+      try {
+        const userId = auth.currentUser?.uid;
+        if (!userId) {
+          setCargando(false);
+          return;
+        }
 
-      const tareas = await bajarTareas(userId);
+        // Obtener tareas
+        const tareas = await bajarTareas(userId);
+        const tareasConId = tareas.map((tarea, index) => ({
+          ...tarea,
+          id: index + 1,
+          hora: '08:00', 
+          completada: false,
+        }));
+        setProximas(tareasConId);
 
-      const tareasConId = tareas.map((tarea, index) => ({
-        ...tarea,
-        id: index + 1,
-        hora: '08:00', 
-        completada: false,
-      }));
+        // Obtener horario
+        const horario = await bajarHorario(userId);
+        console.log("Horario obtenido:", horario);
+        
+        const isObjectEmpty = (obj) => {
+          return Object.values(obj).every(
+            value => typeof value === 'object' && value !== null 
+              ? Object.keys(value).length === 0 
+              : !value
+          );
+        };
 
-      setProximas(tareasConId);
+        if (horario && !isObjectEmpty(horario)) {
+          const horarioClonado = JSON.parse(JSON.stringify(horario)); 
+          const extras = horarioClonado.extras;
+
+          for (const dia in extras) {
+            const nuevasActividades = [];
+
+            extras[dia].forEach((actividad) => {
+              if (
+                actividad.actividad === "Dormirse" &&
+                actividad.inicio > actividad.fin
+              ) {
+                nuevasActividades.push(
+                  {
+                    actividad: "Dormirse",
+                    inicio: actividad.inicio,
+                    fin: "23:59",
+                  },
+                  {
+                    actividad: "Despertarse",
+                    inicio: "00:00",
+                    fin: actividad.fin,
+                  }
+                );
+              } else {
+                nuevasActividades.push(actividad);
+              }
+            });
+
+            extras[dia] = nuevasActividades;
+          }
+
+          setHorarioExistente(horarioClonado);
+        } else {
+          setHorarioExistente(null);
+        }
+      } catch (error) {
+        console.error("Error al obtener datos:", error);
+      } finally {
+        setCargando(false);
+      }
     };
 
     fetchTareas();
@@ -180,6 +244,8 @@ export default function Page() {
       )
     );
   };
+
+  if (cargando) { return <Loading />; }
 
   return (
     <div className='w-full'>

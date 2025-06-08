@@ -91,15 +91,20 @@ const CalendarView = () => {
     }
 
     // Tareas del usuario
-    tareasUsuario.forEach(({ titulo, descripcion, fecha, materia }) => {
+    tareasUsuario.forEach(({ titulo, descripcion, fecha, materia, hora, duracion, dificultad }) => {
       calendarEvents.push({
-        title: `Tarea: ${descripcion}`,
+        title: titulo,
+        description: descripcion,
         start: fecha,
         allDay: true,
         color: materias[materia]?.color || '#000',
         extendedProps: {
           materia,
+          hora: hora || '',
           tipo: 'tarea',
+          description: descripcion,
+          duracion, // Nuevo campo
+          dificultad // Nuevo campo
         }
       });
     });
@@ -126,6 +131,7 @@ const CalendarView = () => {
                 : !value
             );
           };
+      console.log("Tareas del usuario:", tareasDelUsuario);
       const horario = await bajarHorario(userId);
       console.log("Horario obtenido en calendario:", horario);
       setHorarioExistenteRecivido(horario); 
@@ -209,10 +215,27 @@ const CalendarView = () => {
       const tipo = clickInfo.event.extendedProps?.tipo;
 
       if (tipo === 'clase' || tipo === 'extra') {
-        setSelectedEvent(clickInfo.event);
+        setSelectedEvent({
+          title: clickInfo.event.title,
+          start: clickInfo.event.startStr,
+          end: clickInfo.event.endStr,
+          extendedProps: clickInfo.event.extendedProps
+        });
         setShowDetalle(true);
       } else {
-        setSelectedEvent(clickInfo.event);
+        setSelectedEvent({
+          title: clickInfo.event.title,
+          description: clickInfo.event.extendedProps?.description || '',
+          hora: clickInfo.event.extendedProps?.hora || clickInfo.event.hora || '',
+          start: clickInfo.event.startStr,
+          end: clickInfo.event.endStr,
+          allDay: clickInfo.event.allDay,
+          extendedProps: {
+            ...clickInfo.event.extendedProps,
+            duracion: clickInfo.event.extendedProps?.duracion || '', // Nuevo campo
+            dificultad: clickInfo.event.extendedProps?.dificultad || '' // Nuevo campo
+          }
+        });
         setShowModal(true);
       }
     };
@@ -238,6 +261,7 @@ const CalendarView = () => {
         setActivities(activities.filter(ev => ev.title !== selectedEvent.title || ev.start !== selectedEvent.startStr));
         setShowModal(false);
         }
+        window.location.reload(); 
     };
 
   if (cargando) return <Loading />;
@@ -271,7 +295,19 @@ const CalendarView = () => {
     {showModal && (
       <ModalForm
         date={selectedDate}
-        event={selectedEvent}
+        event={{
+          title: selectedEvent?.title,
+          startStr: selectedEvent?.start,
+          extendedProps: {
+            materia: selectedEvent?.extendedProps?.materia,
+            description: selectedEvent?.extendedProps?.description,
+            hora: selectedEvent?.hora,
+            duracion: selectedEvent?.extendedProps?.duracion, // Nuevo campo
+            dificultad: selectedEvent?.extendedProps?.dificultad // Nuevo campo
+          },
+          hora: selectedEvent?.hora,
+          allDay: selectedEvent?.allDay
+        }}
         onClose={() => setShowModal(false)}
         onSave={handleSave}
         onDelete={handleDelete}
