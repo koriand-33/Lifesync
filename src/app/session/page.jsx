@@ -8,10 +8,11 @@ import FormInicioSession from '@/component/session/FormInicioSession';
 import FormInicioRegistro from '@/component/session/FormInicioRegistro';
 import TextoRegistro from '@/component/session/TextoRegistro';
 import TextoSession from '@/component/session/TextoSession';
+import Loading from '@/component/loading/loading';
 // import FormInicioRegistroProveedor from '@/component/session/FormInicioRegistroProveedor';
 
 
-const Acceso = () => {
+const SessionContent   = () => {
   const [isRight, setIsRight] = useState(false);
   const searchParams = useSearchParams();
 
@@ -82,6 +83,14 @@ const Acceso = () => {
         </div>
       </AnimatedCircle>
     </div>
+  );
+};
+
+const Acceso = () => {
+  return (
+    <React.Suspense fallback={<Loading/>}>
+      <SessionContent />
+    </React.Suspense>
   );
 };
 
