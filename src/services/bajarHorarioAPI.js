@@ -6,7 +6,7 @@ import { db } from "../../conexion_BD/firebase";
  * @param {string} userId - ID del usuario
  * @returns {Promise<Object>} - Objeto con materias, clases y extras
  */
-export const bajarHorario = async (userId) => {
+export const bajarHorarioAPI = async (userId) => {
   try {
     const userRef = doc(db, "USUARIOS", userId);
     const docSnap = await getDoc(userRef);
@@ -17,12 +17,13 @@ export const bajarHorario = async (userId) => {
 
     const data = docSnap.data();
 
-    const horario = data.HorarioSemanal || {};
+    const horario = data.HorarioSemanalApi || {};
 
     return {
       materias: horario.materias || {},
       clases: horario.clases || {},
       extras: horario.extras || {},
+      horarios_materias: horario.horarios_materias || {},
       tiempo_fines: horario.tiempo_fines || {}
     };
   } catch (error) {

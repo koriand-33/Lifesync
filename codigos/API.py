@@ -98,8 +98,8 @@ def predecir():
             tiempo_libre_por_dia["tiempo_total_libre"],
             dia_actual=mapeo_dias[dia_semana],
             hora_actual=hora,
-            tiempo_sabado=2,
-            tiempo_domingo=2,
+            tiempo_sabado=data["tiempo_fines"]["Sábado"],
+            tiempo_domingo=data["tiempo_fines"]["Domingo"],
         )
 
         return jsonify(data | horarios)

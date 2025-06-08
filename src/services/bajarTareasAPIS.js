@@ -13,9 +13,10 @@ import { db } from "../../conexion_BD/firebase";
  *   fechaCompleta: string,
  *   duracion: number | null,
  *   dificultad: number | null
+ *   done: boolean
  * }>>}
  */
-export const bajarTareas = async (userId) => {
+export const bajarTareasAPI = async (userId) => {
   try {
     const userRef = doc(db, "USUARIOS", userId);
     const docSnap = await getDoc(userRef);
@@ -23,7 +24,7 @@ export const bajarTareas = async (userId) => {
     if (!docSnap.exists()) return [];
 
     const data = docSnap.data();
-    const tareasRaw = data.tareas || {};
+    const tareasRaw = data.tareasApi || {};
     // console.log("Tareas crudas obtenidas:", tareasRaw);
 
     const toDateFromSeconds = (ts) => new Date(ts.seconds * 1000);
@@ -50,7 +51,7 @@ export const bajarTareas = async (userId) => {
       };
     });
 
-    // console.log("Tareas bajadas correctamente:", tareas);
+    // console.log("Tareas API bajadas correctamente:", tareas);
     return tareas;
   } catch (error) {
     console.error("Error al bajar las tareas:", error);

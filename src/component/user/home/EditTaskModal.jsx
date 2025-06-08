@@ -44,12 +44,12 @@ export default function EditTaskModal({
             Guardar
           </button>
 
-          <button
+          {/* <button
             onClick={onComplete}
             className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full sm:w-auto"
           >
             Marcar como completada
-          </button>
+          </button> */}
 
           <button
             onClick={onDelete}

@@ -41,12 +41,12 @@ export default function ActivityCard({ actividad, onMarcarCompletada }) {
 
           {!actividad.completada && (
             <div className="flex gap-3">
-              <button
+              {/* <button
                 onClick={() => onMarcarCompletada(actividad.id)}
                 className="bg-green-600 text-white px-4 py-1 rounded hover:bg-green-700"
               >
                 Marcar como completada
-              </button>
+              </button> */}
               <button
                 onClick={irACalendario}
                 className="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700"

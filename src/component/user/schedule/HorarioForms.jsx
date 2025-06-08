@@ -21,8 +21,10 @@ function agruparActividadesPorDia(extrasPorDia) {
     Mar: [],
     Mié: [],
     Jue: [],
-    Vie: []
+    Vie: [],
   };
+
+  const tiempoLibreResumen = {};
 
   const paresActividades = [
     { inicioKey: 'desayunoInicio', finKey: 'desayunoFin', actividad: 'Desayuno' },
@@ -31,35 +33,48 @@ function agruparActividadesPorDia(extrasPorDia) {
     { inicioKey: 'trayectoVueltaInicio', finKey: 'trayectoVueltaFin', actividad: 'Trayecto Vuelta' }
   ];
 
-  for (const dia in extrasPorDia) {
-    const extras = extrasPorDia[dia];
+for (const dia in extrasPorDia) {
+  const extras = extrasPorDia[dia];
 
+  const diaNormalizado = dia === "Sáb" ? "Sab" : dia;
+
+  if (!["Lun", "Mar", "Mié", "Jue", "Vie", "Sab", "Dom"].includes(diaNormalizado)) {
+    continue; // Ignorar días completamente desconocidos
+  }
+
+  if (["Sab", "Dom"].includes(diaNormalizado)) {
+    const tiempoLibre = extras.tiempoLibre;
+    if (tiempoLibre) {
+      const diaCompleto = diaNormalizado === "Sab" ? "Sabado" : "Domingo";
+      tiempoLibreResumen[diaCompleto] = parseInt(tiempoLibre);
+    }
+  } else {
+    // Procesar días L-V normalmente
     paresActividades.forEach(({ inicioKey, finKey, actividad }) => {
       const inicio = extras[inicioKey];
       const fin = extras[finKey];
-
       if (inicio && fin) {
-        actividadesPorDia[dia].push({
-          actividad,
-          inicio,
-          fin
-        });
+        actividadesPorDia[diaNormalizado].push({ actividad, inicio, fin });
       }
     });
 
     const despertar = extras.despertarse;
     const dormir = extras.dormirse;
-
     if (despertar && dormir) {
-      actividadesPorDia[dia].push({
+      actividadesPorDia[diaNormalizado].push({
         actividad: 'Dormirse',
-        inicio:dormir,
-        fin: despertar
+        inicio: dormir,
+        fin: despertar,
       });
     }
   }
+}
 
-  return actividadesPorDia;
+
+  return {
+    actividadesPorDia,
+    extrasAgrupadas: tiempoLibreResumen
+  };
 }
 
 const materiasIniciales = [
@@ -73,6 +88,7 @@ const materiasIniciales = [
 ];
 
 const dias = ["Lun", "Mar", "Mié", "Jue", "Vie"];
+const diasConFines = [...dias, "Sab", "Dom"];
 
 const camposFijos = [
   { key: 'despertarse', label: 'Despertarse' },
@@ -88,6 +104,11 @@ const camposFijos = [
 ];
 
 export default function HorarioForms({ horarioExistente = null, onClose, onRefresh }) {
+  console.log("🟢 Datos recibidos por HorarioForms:");
+  console.log("horarioExistente:", horarioExistente);
+  console.log("onClose:", onClose);
+  console.log("onRefresh:", onRefresh);
+
   // Materias fijas: siempre esas 6, pero ordenables
   const [materiasFijas, setMateriasFijas] = useState(
     () => horarioExistente && horarioExistente.materias
@@ -115,43 +136,62 @@ export default function HorarioForms({ horarioExistente = null, onClose, onRefre
   const [dragIndex, setDragIndex] = useState(null);
 
   // Estado para actividades agregables con materias
-  const [datos, setDatos] = useState(() =>
-    horarioExistente?.clases || Object.fromEntries(dias.map((dia) => [dia, []]))
-  );
+  // const [datos, setDatos] = useState(() =>
+  //   horarioExistente?.clases || Object.fromEntries(dias.map((dia) => [dia, []]))
+  // );
+  const [datos, setDatos] = useState(() => {
+    if (horarioExistente?.clases) {
+      // Asegurarnos que todos los días existan, incluso si no estaban en horarioExistente
+      const clasesConTodosLosDias = Object.fromEntries(
+        dias.map(dia => [dia, horarioExistente.clases[dia] || []])
+      );
+      return clasesConTodosLosDias;
+    }
+    return Object.fromEntries(dias.map(dia => [dia, []]));
+  });
   // Estado para actividades fijas de cada día
   const [extrasPorDia, setExtrasPorDia] = useState(() => {
     if (!horarioExistente?.extras) {
       return Object.fromEntries(
-        dias.map((dia) => [
+        diasConFines.map((dia) => [
           dia,
-          Object.fromEntries(camposFijos.map(c => [c.key, ""]))
+          dia === "Sab" || dia === "Dom"
+            ? { tiempoLibre: "" }
+            : Object.fromEntries(camposFijos.map(c => [c.key, ""]))
         ])
       );
     }
     // reconstruir extrasPorDia desde actividades agrupadas
     const reconstruido = {};
-    for (const dia of dias) {
-      const diaExtras = horarioExistente.extras[dia] || [];
-      const extras = Object.fromEntries(camposFijos.map(c => [c.key, ""]));
-      for (const act of diaExtras) {
-        if (act.actividad === "Desayuno") {
-          extras.desayunoInicio = act.inicio;
-          extras.desayunoFin = act.fin;
-        } else if (act.actividad === "Comida") {
-          extras.comidaInicio = act.inicio;
-          extras.comidaFin = act.fin;
-        } else if (act.actividad === "Trayecto Ida") {
-          extras.trayectoIdaInicio = act.inicio;
-          extras.trayectoIdaFin = act.fin;
-        } else if (act.actividad === "Trayecto Vuelta") {
-          extras.trayectoVueltaInicio = act.inicio;
-          extras.trayectoVueltaFin = act.fin;
-        } else if (act.actividad === "Dormirse") {
-          extras.despertarse = act.fin;
-          extras.dormirse = act.inicio;
+    for (const dia of diasConFines) {
+      if (dia === "Sab" || dia === "Dom") {
+        const tiempo = horarioExistente.tiempo_fines?.[dia === "Sab" ? "Sabado" : "Domingo"];
+        reconstruido[dia] = {
+          tiempoLibre: tiempo?.toString() || ""
+        };
+      } else {
+        const diaExtras = horarioExistente.extras[dia] || [];
+        const extras = Object.fromEntries(camposFijos.map(c => [c.key, ""]));
+        for (const act of diaExtras) {
+          if (act.actividad === "Desayuno") {
+            extras.desayunoInicio = act.inicio;
+            extras.desayunoFin = act.fin;
+          } else if (act.actividad === "Comida") {
+            extras.comidaInicio = act.inicio;
+            extras.comidaFin = act.fin;
+          } else if (act.actividad === "Trayecto Ida") {
+            extras.trayectoIdaInicio = act.inicio;
+            extras.trayectoIdaFin = act.fin;
+          } else if (act.actividad === "Trayecto Vuelta") {
+            extras.trayectoVueltaInicio = act.inicio;
+            extras.trayectoVueltaFin = act.fin;
+          } else if (act.actividad === "Dormirse") {
+            extras.despertarse = act.fin;
+            extras.dormirse = act.inicio;
+          }
         }
+        reconstruido[dia] = extras;
       }
-      reconstruido[dia] = extras;
     }
     return reconstruido;
   });
@@ -314,6 +354,8 @@ const manejarCambioFijo = (dia, key, valor) => {
     e.preventDefault();
 
     for (const dia of dias) {
+      if (dia === "Sab" || dia === "Dom") continue; // Saltar fines de semana
+
       for (let { key, label } of camposFijos) {
         if (!extrasPorDia[dia][key]) {
           alert(`Por favor completa el campo "${label}" en ${dia}.`);
@@ -321,6 +363,16 @@ const manejarCambioFijo = (dia, key, valor) => {
         }
       }
     }
+
+    // Validar tiempo libre en fines de semana
+    for (const dia of ["Sab", "Dom"]) {
+      const tiempoLibre = extrasPorDia[dia]?.tiempoLibre;
+      if (!tiempoLibre || isNaN(parseInt(tiempoLibre))) {
+        alert(`Por favor ingresa el tiempo libre en ${dia}.`);
+        return;
+      }
+    }
+
     for (const dia of dias) {
       for (let { key, label } of camposFijos) {
         if (key.endsWith('Inicio')) {
@@ -360,6 +412,14 @@ const manejarCambioFijo = (dia, key, valor) => {
           }
         }
       }
+      for (const dia of ["Sab", "Dom"]) {
+        const tiempo = extrasPorDia[dia]?.tiempoLibre;
+        if (!tiempo || isNaN(parseInt(tiempo))) {
+          alert(`Por favor ingresa el tiempo libre en ${dia}.`);
+          return;
+        }
+      }
+
       const despertar = timeToMinutes(extrasPorDia[dia].despertarse);
       const dormir = timeToMinutes(extrasPorDia[dia].dormirse);
 
@@ -411,9 +471,12 @@ const manejarCambioFijo = (dia, key, valor) => {
       materiasObj["Eventos"] = { color: "#888888" };
     }
 
-    const extrasAgrupadas = agruparActividadesPorDia(extrasPorDia);
+    const { actividadesPorDia, extrasAgrupadas } = agruparActividadesPorDia(extrasPorDia); 
 
-    await subirHorario(auth.currentUser.uid, materiasObj, datos, extrasAgrupadas);
+    console.log("extrasAgrupadas:", extrasAgrupadas);
+
+    // await subirHorario(auth.currentUser.uid, materiasObj, datos, extrasAgrupadas);
+    await subirHorario(auth.currentUser.uid, materiasObj, datos, actividadesPorDia, extrasAgrupadas);
 
     if (onRefresh) onRefresh();
     if (onClose) onClose();
@@ -478,7 +541,6 @@ const manejarCambioFijo = (dia, key, valor) => {
               onChange={e => manejarCambioMateriaFija(idx, "color", e.target.value)}
               style={{ width: 34, height: 34, border: "none" }}
             />
-            {/* No eliminar */}
           </div>
         ))}
       </div>
@@ -632,6 +694,49 @@ const manejarCambioFijo = (dia, key, valor) => {
           </button>
         </fieldset>
       ))}
+
+      {/* Espacio para tiempo libre en fines de semana */}
+      <fieldset style={{ border: "1px solid #bbb", marginBottom: 28, borderRadius: 9, padding: 18 }}>
+        <legend style={{ fontWeight: "bold", fontSize: 18 }}>Tiempo libre en fines de semana</legend>
+        <p>Ingresa el tiempo libre en horas en cada día de la semana</p>
+
+        {/* Sábado */}
+        <div className="my-4">
+          <label htmlFor="sabado-tiempoLibre" className="font-semibold">Tiempo libre en Sábado (horas):</label>
+          <input 
+            type="number"
+            id="sabado-tiempoLibre"
+            min={0}
+            max={24}
+            placeholder="Sábado (horas)"
+            className="mb-3 rounded-md border border-gray-300"
+            style={{ width: "100%", padding: "6px", fontSize: "14px" }}
+            onChange={(e) => manejarCambioFijo("Sab", "tiempoLibre", e.target.value)}
+            value={extrasPorDia["Sab"]?.tiempoLibre || ""}
+            required
+          />
+        </div>
+
+        {/* Domingo */}
+        <div className="my-4">
+          <label htmlFor="domingo-tiempoLibre" className="font-semibold">Tiempo libre en Domingo (horas):</label>
+          <input 
+            type="number"
+            id="domingo-tiempoLibre"
+            min={0}
+            max={24}
+            placeholder="Domingo (horas)"
+            className="mb-3 rounded-md border border-gray-300"
+            style={{ width: "100%", padding: "6px", fontSize: "14px" }}
+            onChange={(e) => manejarCambioFijo("Dom", "tiempoLibre", e.target.value)}
+            value={extrasPorDia["Dom"]?.tiempoLibre || ""}
+            required
+          />
+        </div>
+      </fieldset>
+
+
+      {/* Boton de guardado */}
       <button
         type="submit"
         style={{

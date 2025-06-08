@@ -11,6 +11,9 @@ import { bajarHorario } from '@/services/bajarHorario';
 import { auth } from '../../../../conexion_BD/firebase';
 import Loading from '@/component/loading/loading';
 import { bajarTareas } from '@/services/bajarTareas';
+import { bajarHorarioAPI } from '@/services/bajarHorarioAPI';
+import { bajarTareasAPI } from '@/services/bajarTareasAPIS';
+import { fusionarTareas } from '@/services/tratamientoDatos/fusionarTareas';
 
 const CalendarView = () => {
   const [activities, setActivities] = useState([]);
@@ -87,6 +90,24 @@ const CalendarView = () => {
         });
       });
 
+      // horarios_materias
+      Object.entries(horarioExistenteRecivido.horarios_materias || {}).forEach(([dia, eventos]) => {
+        eventos.forEach(({ horaInicio, horaFin, materia }) => {
+          const diaIndex = diaNombreToIndex[dia];
+          const fecha = nextWeekdayDate(diaIndex, semana);
+          calendarEvents.push({
+            title: materia,
+            start: `${fecha}T${horaInicio}`,
+            end: `${fecha}T${horaFin}`,
+            color: materias[materia]?.color || '#94de1d',
+            extendedProps: {
+              importancia: materias[materia]?.importancia || null,
+              tipo: 'estudio',
+            }
+          });
+        });
+      });
+
       semana++;
     }
 
@@ -122,17 +143,26 @@ const CalendarView = () => {
         setCargando(false);
         return;
       }
-      const tareasDelUsuario = await bajarTareas(userId);
-          setTareasUsuario(tareasDelUsuario);
-          const isObjectEmpty = (obj) => {
-            return Object.values(obj).every(
-              value => typeof value === 'object' && value !== null 
-                ? Object.keys(value).length === 0 
-                : !value
-            );
-          };
-      console.log("Tareas del usuario:", tareasDelUsuario);
-      const horario = await bajarHorario(userId);
+
+
+      // const tareasDelUsuario = await bajarTareas(userId);
+      const tareasDelUsuario = await bajarTareasAPI(userId);
+      const tareasDelUsuarioNormal = await bajarTareas(userId);
+
+      const tareasFinales = fusionarTareas(tareasDelUsuario, tareasDelUsuarioNormal);
+      setTareasUsuario(tareasFinales);
+      const isObjectEmpty = (obj) => {
+        return Object.values(obj).every(
+          value => typeof value === 'object' && value !== null 
+            ? Object.keys(value).length === 0 
+            : !value
+        );
+      };
+
+
+
+      // const horario = await bajarHorario(userId);
+      const horario = await bajarHorarioAPI(userId);
       console.log("Horario obtenido en calendario:", horario);
       setHorarioExistenteRecivido(horario); 
 
@@ -162,7 +192,6 @@ const CalendarView = () => {
                 }
               );
             } else {
-              // Normal, no dividir
               nuevasActividades.push(actividad);
             }
           });
@@ -171,7 +200,7 @@ const CalendarView = () => {
         }
 
         setTieneHorario(true);
-        setHorarioExistente(horarioClonado); // este sí se usa en el calendario
+        setHorarioExistente(horarioClonado);
       } else {
         setTieneHorario(false);
         setHorarioExistente(null);
@@ -190,8 +219,8 @@ const CalendarView = () => {
 
     const getStartOfWeek = (weeksAhead = 0) => {
         const now = new Date();
-        const day = now.getDay(); // 0 (Domingo) a 6 (Sábado)
-        const diffToMonday = (day === 0 ? -6 : 1) - day; // Lunes como base
+        const day = now.getDay();
+        const diffToMonday = (day === 0 ? -6 : 1) - day;
         const monday = new Date(now);
         monday.setDate(now.getDate() + diffToMonday + weeksAhead * 7);
         monday.setHours(0, 0, 0, 0);
@@ -201,7 +230,7 @@ const CalendarView = () => {
         const nextWeekdayDate = (targetDay, weeksAhead = 0) => {
         const monday = getStartOfWeek(weeksAhead);
         const date = new Date(monday);
-        date.setDate(monday.getDate() + (targetDay - 1)); // Lunes=1, Martes=2,...
+        date.setDate(monday.getDate() + (targetDay - 1));
         return date.toISOString().split('T')[0];
         };
 
@@ -214,7 +243,7 @@ const CalendarView = () => {
     const handleEventClick = (clickInfo) => {
       const tipo = clickInfo.event.extendedProps?.tipo;
 
-      if (tipo === 'clase' || tipo === 'extra') {
+      if (tipo === 'clase' || tipo === 'extra' || tipo === 'estudio') {
         setSelectedEvent({
           title: clickInfo.event.title,
           start: clickInfo.event.startStr,

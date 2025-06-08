@@ -1,5 +1,6 @@
 import { doc, updateDoc, Timestamp } from "firebase/firestore";
 import { db } from "../../conexion_BD/firebase";
+import { procesarHorarioYEnviarAPI } from "./HorarioAPI";
 
 /**
  * Crea o actualiza una tarea en Firebase para el usuario dado.
@@ -25,11 +26,12 @@ export const subirTarea = async (userId, tarea) => {
     const nuevaTarea = {
       descripcion: tarea.descripcion,
       materia: tarea.materia,
-      fecha: Timestamp.fromDate(new Date(tarea.fecha)), // Mantener por compatibilidad
-      hora: tarea.hora, // Guardar la hora por separado
-      fechaCompleta: fechaCompletaTimestamp, // Nueva fecha con hora
-      duracion: tarea.duracion, // Nuevo campo
-      dificultad: tarea.dificultad // Nuevo campo
+      fecha: Timestamp.fromDate(new Date(tarea.fecha)),
+      hora: tarea.hora,
+      fechaCompleta: fechaCompletaTimestamp,
+      duracion: tarea.duracion,
+      dificultad: tarea.dificultad,
+      done: false, 
     };
 
     await updateDoc(userRef, {
@@ -37,6 +39,7 @@ export const subirTarea = async (userId, tarea) => {
     });
 
     console.log("Tarea subida/editada correctamente");
+    const { datosEnviados, respuestaAPI } = await procesarHorarioYEnviarAPI(userId);
     window.location.reload();
   } catch (error) {
     console.error("Error al subir la tarea:", error);

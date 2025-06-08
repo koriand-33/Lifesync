@@ -6,12 +6,16 @@ import { bajarHorario } from '@/services/bajarHorario';
 import { auth } from '../../../../conexion_BD/firebase';
 import HorarioVista from '@/component/user/schedule/HorarioVista';
 import Loading from '@/component/loading/loading';
+import { bajarHorarioAPI } from '@/services/bajarHorarioAPI';
 
 export default function Schedules() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tieneHorario, setTieneHorario] = useState(false);
   const [horarioExistente, setHorarioExistente] = useState(null);
   const modalRef = useRef(null);
+  const [modalhorarioAPI, setmodalHorarioAPI] = useState(false);
+  const [tineHorarioAPI, setTieneHorarioAPI] = useState(false);
+  const [horarioExistenteAPI, setHorarioExistenteAPI] = useState(null);
   const [cargando, setCargando] = useState(true);
 
   const openModal = () => setIsModalOpen(true);
@@ -39,7 +43,9 @@ export default function Schedules() {
         return;
       }
       const horario = await bajarHorario(userId);
-      console.log("Horario obtenido:", horario);
+      // console.log("Horario obtenido personal:", horario);
+      const horarioAPI = await bajarHorarioAPI(userId);
+      // console.log("Horario obtenido:", horario);
       if (horario && !isObjectEmpty(horario)) {
         setTieneHorario(true);
         setHorarioExistente(horario);
@@ -47,12 +53,29 @@ export default function Schedules() {
         setTieneHorario(false);
         setHorarioExistente(null);
       }
+      if (horarioAPI) {
+        setTieneHorarioAPI(true);
+        setHorarioExistenteAPI(horarioAPI);
+        // console.log("Horario obtenido API:", horarioAPI);
+
+      } else {
+        setTieneHorarioAPI(false);
+        setHorarioExistenteAPI(null);
+      }
     } catch (error) {
       console.error("Error al obtener el horario:", error);
     } finally {
       setCargando(false);
     }
   };
+
+  const handlecambiarHorario = () =>
+  {
+    setmodalHorarioAPI(!modalhorarioAPI);
+    if (modalhorarioAPI) {
+      fetchHorario();
+    }
+  }
 
   useEffect(() => {
     fetchHorario();
@@ -86,7 +109,25 @@ export default function Schedules() {
           </div>
         </div>
       ) : (
-        <HorarioVista horario={horarioExistente} onEditar={openModal} />
+        <>
+          {tieneHorario && tineHorarioAPI && (
+            <div className='flex flex-col sm:flex-row items-center sm:justify-end justify-center sm:pr-20 pr-0'>
+              <button
+                onClick={handlecambiarHorario}
+                className='bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors'
+              >
+                {modalhorarioAPI ? 'Ver horario personalizado' : 'Ver horario de la API'}
+              </button>
+            </div>
+          )}
+          {modalhorarioAPI ? (
+            // Vista del horario de la API con modalhorarioAPI true
+            <HorarioVista horario={horarioExistenteAPI} onEditar={openModal} API={modalhorarioAPI}/>
+          ):(
+            <HorarioVista horario={horarioExistente} onEditar={openModal} API={modalhorarioAPI}/>
+
+          )}
+        </>
       )}
 
       {isModalOpen && (

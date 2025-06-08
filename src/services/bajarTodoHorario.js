@@ -6,7 +6,7 @@ import { db } from "../../conexion_BD/firebase";
  * @param {string} userId - ID del usuario
  * @returns {Promise<Object>} - Objeto con materias, clases y extras
  */
-export const bajarHorario = async (userId) => {
+export const bajarTodoHorario = async (userId) => {
   try {
     const userRef = doc(db, "USUARIOS", userId);
     const docSnap = await getDoc(userRef);
@@ -18,12 +18,11 @@ export const bajarHorario = async (userId) => {
     const data = docSnap.data();
 
     const horario = data.HorarioSemanal || {};
+    const tareas = data.tareas || {};
 
     return {
-      materias: horario.materias || {},
-      clases: horario.clases || {},
-      extras: horario.extras || {},
-      tiempo_fines: horario.tiempo_fines || {}
+      horario: horario,
+      tareas: tareas,
     };
   } catch (error) {
     console.error("Error al bajar el horario:", error);

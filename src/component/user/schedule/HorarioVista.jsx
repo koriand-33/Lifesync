@@ -3,24 +3,39 @@ import { useEffect } from "react";
 
 const dias = ["Lun", "Mar", "Mié", "Jue", "Vie"];
 
-export default function HorarioVista({ horario, onEditar }) {
+export default function HorarioVista({ horario, onEditar, API }) {
   if (!horario) return null;
 
-  const { materias, clases, extras } = horario;
+  let materias, clases, extras, horarios_materias;
+  
+  if (API) {
+    ({ materias, clases, extras, horarios_materias } = horario);
+  } else {
+    ({ materias, clases, extras } = horario);
+  }
 
-  const getColor = (nombre) => materias?.[nombre]?.color || "#f3f4f6";
+  // console.log("HorarioVista renderizado con datos:", horario);
+  // console.log("Materias:", materias);
+  // console.log("API:", API);
+  // console.log(`Materias API Dia:`, horario.horarios_materias);
 
-    useEffect(() => {
-        console.log("HorarioVista renderizado con datos:", horario);
-    }, [horario]);
+  const getColor = (nombre) => materias?.[nombre]?.color || "#008f39";
+
+    // useEffect(() => {
+    //     console.log("HorarioVista renderizado con datos:", horario);
+    // }, [horario]);
 
   return (
     <div className="max-w-4xl mx-auto p-4">
-      <h2 className="text-2xl font-bold mb-6 text-center">Mi Horario</h2>
+      <h2 className="text-2xl font-bold mb-6 text-center">
+        Mi Horario {API ? " (desde API)" : " (personalizado)"}
+      </h2>
 
       {dias.map((dia) => {
         const materiasDia = clases?.[dia] || [];
         const extrasDia = extras?.[dia] || [];
+        const materiasAPIDia = API && horarios_materias ? (horarios_materias[dia] || []) : [];
+        // console.log(`MateriasAPI para ${dia}:`, materiasAPIDia);
 
         const todasActividades = [
           ...materiasDia.map((a) => ({
@@ -30,6 +45,14 @@ export default function HorarioVista({ horario, onEditar }) {
             fin: a.horaFin,
             color: getColor(a.materia),
           })),
+          ...materiasAPIDia.map(a => ({
+            tipo: "estudio",
+            origen: "api",
+            nombre: a.nombre || a.materia,
+            inicio: a.hora_inicio || a.horaInicio,
+            fin: a.hora_fin || a.horaFin,
+            color: "#001a57",
+          })),
           ...extrasDia.map((a) => ({
             tipo: "extra",
             nombre: a.actividad,
@@ -38,6 +61,16 @@ export default function HorarioVista({ horario, onEditar }) {
             color: "bg-blue-600",
           })),
         ];
+
+        // console.log("Actividades completas:", todasActividades.map(a => ({
+        //   nombre: a.nombre,
+        //   tipo: a.tipo,
+        //   inicio: a.inicio,
+        //   esUndefined: typeof a.inicio === 'undefined',
+        //   esNull: a.inicio === null,
+        //   esString: typeof a.inicio === 'string'
+        // })));
+
 
         todasActividades.sort((a, b) => a.inicio.localeCompare(b.inicio));
 
@@ -60,12 +93,22 @@ export default function HorarioVista({ horario, onEditar }) {
                       className={`p-3 rounded-lg text-white ${
                         act.tipo === "extra" ? "bg-blue-600" : ""
                       }`}
-                      style={act.tipo === "materia" ? { backgroundColor: act.color } : {}}
+                      style={act.tipo === "materia" || act.tipo === "estudio"  ? { backgroundColor: act.color } : {}}
                     >
                       <strong>{textoHorario}</strong>
                       {act.tipo === "extra" && (
                         <span className="ml-2 text-sm bg-white text-blue-600 px-2 py-0.5 rounded">
                           Actividad Base
+                        </span>
+                      )}
+                      {act.tipo === "estudio" && (
+                        <span className="ml-2 text-sm bg-white text-blue-600 px-2 py-0.5 rounded">
+                          Estudio
+                        </span>
+                      )}
+                      {act.tipo === "materia" && (
+                        <span className="ml-2 text-sm bg-white text-blue-600 px-2 py-0.5 rounded">
+                          Clase
                         </span>
                       )}
                     </div>
@@ -79,6 +122,7 @@ export default function HorarioVista({ horario, onEditar }) {
         );
       })}
 
+      {!API &&
       <div className="flex justify-center mt-8">
         <button
           onClick={onEditar}
@@ -87,6 +131,7 @@ export default function HorarioVista({ horario, onEditar }) {
            Editar horario
         </button>
       </div>
+      }
     </div>
   );
 }
