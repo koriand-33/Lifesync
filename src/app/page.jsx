@@ -5,7 +5,7 @@ import MoreAbout from "@/component/landing/moreAbout";
 import MoreAbout2 from "@/component/landing/moreAbout2";
 import Experiencias from "@/component/landing/Experiencias";
 import FAQ from "@/component/landing/FAQ";
-import Footer from "@/component/landing/footer";
+import Footer from "@/component/landing/Footer";
 
 export default function Home() {
   return (
