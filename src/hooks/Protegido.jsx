@@ -12,7 +12,6 @@ export default function Protegido({ children }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-    //     console.log("🧪 onAuthStateChanged fired");
     // debugger;
       if (user) {
         setUsuario(user);

@@ -61,7 +61,7 @@ const handleSubmit = async (e) => {
     <div className="max-w-md mx-auto p-8 rounded-lg ">
       <h2 className="text-2xl font-bold mb-6">Inicia Sesion</h2>
 
-      <div className="flex gap-2 mb-4">
+      {/* <div className="flex gap-2 mb-4">
         <button className="w-full flex border border-text items-center justify-center gap-2 bg-detail py-2 px-4 rounded hover:bg-details">
           <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
           Sign in with Google
@@ -72,12 +72,11 @@ const handleSubmit = async (e) => {
         </svg>            
           Iniciar sesion con facebook
         </button>
-      </div>
+      </div> */}
 
       <div className="flex items-center justify-between mb-4">
         <hr className="w-full border-gray-700" />
-        <span className="text-sm text-gray-400 px-2">or</span>
-        <hr className="w-full border-gray-700" />
+
       </div>
 
       <form onSubmit={handleSubmit}>

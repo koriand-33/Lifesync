@@ -63,7 +63,7 @@ const FormInicioRegistro = () => {
     <div className="max-w-md mx-auto p-8 rounded-lg">
       <h2 className="text-2xl font-bold mb-6">Regístrate Usuario</h2>
 
-      <div className="flex gap-2 mb-4">
+      {/* <div className="flex gap-2 mb-4">
         <button className="w-full border-text border flex items-center justify-center gap-2 bg- py-2 px-4 rounded hover:hover:bg-details">
           <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
           Iniciar sesión con Google
@@ -74,12 +74,11 @@ const FormInicioRegistro = () => {
           </svg>
           Iniciar sesión con Facebook
         </button>
-      </div>
+      </div> */}
 
       <div className="flex items-center justify-between mb-4">
         <hr className="w-full border-gray-700" />
-        <span className="text-sm text-gray-400 px-2">o</span>
-        <hr className="w-full border-gray-700" />
+
       </div>
 
       <form onSubmit={handleSubmit}>

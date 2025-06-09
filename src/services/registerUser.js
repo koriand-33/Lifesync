@@ -36,7 +36,7 @@ export const registerUser = async (datosUsuario) => {
 
 
     const user = userCredential.user;
-    debugger;
+    // debugger;
     console.log("Fecha de nacimiento recibida:", fecha_nacimiento_viajero);
     let fechaNacimientoFirestore = null;
     if (fecha_nacimiento_viajero) {

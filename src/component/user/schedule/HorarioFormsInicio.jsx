@@ -103,11 +103,11 @@ const camposFijos = [
   { key: 'dormirse', label: 'Dormirse' },
 ];
 
-export default function HorarioForms({ horarioExistente = null, onClose, onRefresh }) {
-  // console.log("🟢 Datos recibidos por HorarioForms:");
-  // console.log("horarioExistente:", horarioExistente);
-  // console.log("onClose:", onClose);
-  // console.log("onRefresh:", onRefresh);
+export default function HorarioFormsInicio({ horarioExistente = null,onClose, onRefresh }) {
+  console.log("🟢 Datos recibidos por HorarioForms:");
+  console.log("horarioExistente:", horarioExistente);
+  console.log("onClose:", onClose);
+  console.log("onRefresh:", onRefresh);
 
   // Materias fijas: siempre esas 6, pero ordenables
   const [materiasFijas, setMateriasFijas] = useState(
@@ -525,7 +525,7 @@ const manejarCambioFijo = (dia, key, valor) => {
     await subirHorario(auth.currentUser.uid, materiasObj, datos, actividadesPorDia, extrasAgrupadas);
 
     if (onRefresh) onRefresh();
-    if (onClose) onClose();
+    // if (onClose) onClose();
   };
 
   // Materias disponibles (para select)
