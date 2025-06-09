@@ -13,55 +13,49 @@ function convertirFechaAFirebase(fechaString) {
  * @returns {Object} Objeto JSON con el formato unificado.
  */
 export function generarFormatoFinal(datosEnviados, respuestaAPI, tareas = []) {
+  console.log("Datos enviados a la API:", datosEnviados);
+  console.log("Respuesta de la API:", respuestaAPI);
+  console.log("Tareas locales:", tareas);
+
   const { materias, clases, extras, tiempo_fines } = datosEnviados;
   const { horarios_materias, colores, nombres, horarios_tareas  } = respuestaAPI;
-const tareasApi = horarios_tareas?.["Tareas Generales"] || [];
+  const tareasApi = horarios_tareas?.["Tareas Generales"] || [];
   const materiasFormateadas = {};
 
-  for (const materia in colores) {
+  // Unificar colores e importancia desde colores o materias
+  for (const materia in materias) {
     materiasFormateadas[materia] = {
-      color: colores[materia],
+      color: materias[materia]?.color || colores?.[materia] || '#cccccc',
+      importancia: materias[materia]?.prioridad ?? null,
     };
-    if (materias[materia]?.prioridad !== undefined) {
-      materiasFormateadas[materia].importancia = materias[materia].prioridad;
-    }
   }
 
-  for (const materia in materias) 
-    {
-        if (!materiasFormateadas[materia]) {
-        materiasFormateadas[materia] = {};
-        if (materias[materia]?.prioridad !== undefined) {
-            materiasFormateadas[materia].importancia = materias[materia].prioridad;
-        }
-        }
+  console.log("Respuesta completa de la API:", respuestaAPI);
+
+  // Fusionar tareas locales con los "done" de la API
+  const tareasConDone = {};
+
+  for (const tarea of tareasApi || []) {
+    const tareaLocal = tareas.find(t =>
+      t.titulo?.trim().toLowerCase() === tarea.descripcion?.trim().toLowerCase()
+    );
+
+    if (!tareaLocal) {
+      console.warn("No se encontró coincidencia para:", tarea.descripcion);
+      continue;
     }
 
-    console.log("Respuesta completa de la API:", respuestaAPI);
+    const materiaColor = materiasFormateadas[tareaLocal.materia]?.color;
 
-
-    //  Fusionar tareas locales con los "done" de la API
-    const tareasConDone = {};
-
-    for (const tarea of tareasApi || []) 
-    {
-        const tareaLocal = tareas.find(t =>
-            t.titulo?.trim().toLowerCase() === tarea.descripcion?.trim().toLowerCase()
-        );
-
-        if (!tareaLocal) {
-            console.warn("No se encontró coincidencia para:", tarea.descripcion);
-            continue;
-        }
-
-        tareasConDone[tareaLocal.titulo] = {
-            ...tareaLocal,
-            duracion: tarea.tiempoDuracion,
-            fecha: convertirFechaAFirebase(tareaLocal.fecha),
-            fechaCompleta: convertirFechaAFirebase(tareaLocal.fechaCompleta),
-            done: tarea.done
-        };
-    }
+    tareasConDone[tareaLocal.titulo] = {
+      ...tareaLocal,
+      duracion: tarea.tiempoDuracion,
+      fecha: convertirFechaAFirebase(tareaLocal.fecha),
+      fechaCompleta: convertirFechaAFirebase(tareaLocal.fechaCompleta),
+      done: tarea.done,
+      color: materiaColor || '#cccccc'
+    };
+  }
 
     return {
         horario: {

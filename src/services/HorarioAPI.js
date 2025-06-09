@@ -43,7 +43,8 @@ export const procesarHorarioYEnviarAPI = async (uid) => {
 
     Object.keys(horario.materias).forEach(materia => {
       datosParaAPI.materias[materia] = {
-        prioridad: horario.materias[materia].prioridad || 5
+        prioridad: horario.materias[materia].importancia || 1,
+        color: horario.materias[materia].color || '#FFFFFF',
       };
     });
 

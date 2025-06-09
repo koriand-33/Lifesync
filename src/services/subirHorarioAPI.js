@@ -3,7 +3,7 @@ import { doc, setDoc } from "firebase/firestore";
 
 export async function subirHorarioCompleto(uid, entrada, salidaApi) {
   try {
-    // console.log("formato de API:", salidaApi);
+    console.log("formato de API:", salidaApi);
     const data = {
       HorarioSemanalApi: {
         clases: salidaApi.horario.clases,

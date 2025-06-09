@@ -124,8 +124,8 @@ const CalendarView = () => {
           hora: hora || '',
           tipo: 'tarea',
           description: descripcion,
-          duracion, // Nuevo campo
-          dificultad // Nuevo campo
+          duracion,
+          dificultad
         }
       });
     });
@@ -150,6 +150,7 @@ const CalendarView = () => {
       const tareasDelUsuarioNormal = await bajarTareas(userId);
 
       const tareasFinales = fusionarTareas(tareasDelUsuario, tareasDelUsuarioNormal);
+      console.log("Tareas del usuario:", tareasFinales);
       setTareasUsuario(tareasFinales);
       const isObjectEmpty = (obj) => {
         return Object.values(obj).every(

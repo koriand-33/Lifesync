@@ -307,43 +307,73 @@ const manejarCambioFijo = (dia, key, valor) => {
         [key]: valor
       },
     };
+
+    // Si el valor está vacío (el usuario borró el campo), no hacer validaciones
+    if (!valor) return next;
+
     // Validar directo campos INICIO-FIN
     if (key.endsWith('Fin')) {
       const inicioKey = key.replace('Fin', 'Inicio');
-      const ini = timeToMinutes(next[dia][inicioKey]);
+      const valorInicio = next[dia][inicioKey];
+
+      // Evita validar si alguno no tiene formato HH:mm
+      if (!/^\d{2}:\d{2}$/.test(valorInicio) || !/^\d{2}:\d{2}$/.test(valor)) {
+        return next;
+      }
+
+      const ini = timeToMinutes(valorInicio);
       const fin = timeToMinutes(valor);
-      if (ini !== null && fin !== null && fin <= ini) {
+
+      if (fin <= ini) {
         alert("La hora de fin debe ser mayor a la de inicio.");
         next[dia][key] = "";
+        return next;
       }
     }
+
     // Validar traslape con otras actividades fijas
-    // Checa todos los pares de intervalos fijos en ese día
     const intervals = [];
-    camposFijos.forEach(({ key: cKey, label }) => {
-      if (cKey.endsWith('Inicio')) {
-        const iniV = timeToMinutes(next[dia][cKey]);
-        const finV = timeToMinutes(next[dia][cKey.replace('Inicio', 'Fin')]);
+
+    // Validar pares INICIO-FIN
+    for (let { key: cKey, label } of camposFijos) {
+      if (cKey.endsWith("Inicio")) {
+        const iniStr = next[dia][cKey];
+        const finStr = next[dia][cKey.replace("Inicio", "Fin")];
+
+        // Solo agregar si ambos tienen formato válido
+        if (!/^\d{2}:\d{2}$/.test(iniStr) || !/^\d{2}:\d{2}$/.test(finStr)) continue;
+
+        const iniV = timeToMinutes(iniStr);
+        const finV = timeToMinutes(finStr);
+
         if (iniV !== null && finV !== null)
           intervals.push({ ini: iniV, fin: finV, label });
       }
-    });
-    // Revisar despertar/dormir
-    const despertar = timeToMinutes(next[dia].despertarse);
-    const dormir = timeToMinutes(next[dia].dormirse);
-    if (despertar !== null && dormir !== null)
-      intervals.push({ ini: despertar, fin: dormir, label: "Dormirse" });
-    // Checar traslapes entre ellos
+    }
+
+    // Validar despertar/dormirse
+    const despertarStr = next[dia].despertarse;
+    const dormirStr = next[dia].dormirse;
+
+    if (/^\d{2}:\d{2}$/.test(despertarStr) && /^\d{2}:\d{2}$/.test(dormirStr)) {
+      const despertar = timeToMinutes(despertarStr);
+      const dormir = timeToMinutes(dormirStr);
+
+      if (despertar !== null && dormir !== null)
+        intervals.push({ ini: dormir, fin: despertar, label: "Dormirse" });
+    }
+
+    // Checar traslapes entre todos los intervalos válidos
     for (let i = 0; i < intervals.length; i++) {
       for (let j = i + 1; j < intervals.length; j++) {
         if (intervalTraslape(intervals[i].ini, intervals[i].fin, intervals[j].ini, intervals[j].fin)) {
           alert(`Las actividades "${intervals[i].label}" y "${intervals[j].label}" se traslapan. Se borra el último valor ingresado.`);
-          // Borra el último editado
           next[dia][key] = "";
           return next;
         }
       }
     }
+
     return next;
   });
 };
@@ -402,16 +432,32 @@ const manejarCambioFijo = (dia, key, valor) => {
       }
     }
     for (const dia of dias) {
+
       const intervals = [];
       for (let { key, label } of camposFijos) {
         if (key.endsWith('Inicio')) {
-          const ini = timeToMinutes(extrasPorDia[dia][key]);
-          const fin = timeToMinutes(extrasPorDia[dia][key.replace('Inicio', 'Fin')]);
-          if (ini !== null && fin !== null) {
-            intervals.push({ ini, fin, label });
+          const inicioStr = extrasPorDia[dia][key];
+          const finKey = key.replace('Inicio', 'Fin');
+          const finStr = extrasPorDia[dia][finKey];
+
+          // Validar formato completo antes de convertir
+          if (!/^\d{2}:\d{2}$/.test(inicioStr) || !/^\d{2}:\d{2}$/.test(finStr)) {
+            continue; // todavía se está escribiendo o valor incompleto
           }
+
+          const ini = timeToMinutes(inicioStr);
+          const fin = timeToMinutes(finStr);
+
+          if (fin <= ini) {
+            alert(`En ${dia}, "${label}" debe tener hora de fin mayor a la de inicio.`);
+            return;
+          }
+
+          intervals.push({ ini, fin, label });
         }
       }
+
+
       for (const dia of ["Sab", "Dom"]) {
         const tiempo = extrasPorDia[dia]?.tiempoLibre;
         if (!tiempo || isNaN(parseInt(tiempo))) {
