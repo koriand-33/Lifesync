@@ -134,6 +134,9 @@ export default function HorarioForms({ horarioExistente = null, onClose, onRefre
 
   // Drag&drop orden
   const [dragIndex, setDragIndex] = useState(null);
+  const [copiarDesde, setCopiarDesde] = useState(
+    Object.fromEntries(dias.map(dia => [dia, "none"]))
+  );
 
   // Estado para actividades agregables con materias
   // const [datos, setDatos] = useState(() =>
@@ -257,27 +260,65 @@ export default function HorarioForms({ horarioExistente = null, onClose, onRefre
 const intervalTraslape = (aIni, aFin, bIni, bFin) => aIni < bFin && bIni < aFin;
 
 // Validación y manejo de horarios al editar actividades de materias
+// const manejarCambioActividad = (dia, idx, campo, valor) => {
+//   setDatos((prev) => {
+//     const actividades = prev[dia].map((act, i) =>
+//       i === idx ? { ...act, [campo]: valor } : act
+//     );
+//     // Solo validamos si ya hay ambos campos
+//     const act = actividades[idx];
+//     // Validar hora fin > hora inicio
+//     if ((campo === "horaFin" || campo === "horaInicio") && act.horaInicio && act.horaFin) {
+//       const hI = timeToMinutes(act.horaInicio);
+//       const hF = timeToMinutes(act.horaFin);
+//       if (hF <= hI) {
+//         alert("La hora de fin debe ser mayor a la de inicio.");
+//         actividades[idx][campo] = ""; // Borra el valor editado
+//         return { ...prev, [dia]: actividades };
+//       }
+//     }
+//     // Validar traslape en actividades de ese día
+//     if (act.horaInicio && act.horaFin) {
+//       const hI = timeToMinutes(act.horaInicio);
+//       const hF = timeToMinutes(act.horaFin);
+//       for (let j = 0; j < actividades.length; j++) {
+//         if (j !== idx) {
+//           const o = actividades[j];
+//           if (o.horaInicio && o.horaFin) {
+//             const oI = timeToMinutes(o.horaInicio);
+//             const oF = timeToMinutes(o.horaFin);
+//             if (intervalTraslape(hI, hF, oI, oF)) {
+//               alert(`La actividad se traslapa con otra. Se eliminará esta entrada.`);
+//               // elimina la actividad editada
+//               return { ...prev, [dia]: actividades.filter((_, k) => k !== idx) };
+//             }
+//           }
+//         }
+//       }
+//     }
+//     return { ...prev, [dia]: actividades };
+//   });
+// };
+
 const manejarCambioActividad = (dia, idx, campo, valor) => {
-  setDatos((prev) => {
+  setDatos(prev => {
     const actividades = prev[dia].map((act, i) =>
       i === idx ? { ...act, [campo]: valor } : act
     );
-    // Solo validamos si ya hay ambos campos
+
     const act = actividades[idx];
-    // Validar hora fin > hora inicio
+
     if ((campo === "horaFin" || campo === "horaInicio") && act.horaInicio && act.horaFin) {
       const hI = timeToMinutes(act.horaInicio);
       const hF = timeToMinutes(act.horaFin);
+
       if (hF <= hI) {
         alert("La hora de fin debe ser mayor a la de inicio.");
-        actividades[idx][campo] = ""; // Borra el valor editado
+        actividades[idx][campo] = "";
         return { ...prev, [dia]: actividades };
       }
-    }
-    // Validar traslape en actividades de ese día
-    if (act.horaInicio && act.horaFin) {
-      const hI = timeToMinutes(act.horaInicio);
-      const hF = timeToMinutes(act.horaFin);
+
+      // Validar contra otras actividades
       for (let j = 0; j < actividades.length; j++) {
         if (j !== idx) {
           const o = actividades[j];
@@ -285,17 +326,47 @@ const manejarCambioActividad = (dia, idx, campo, valor) => {
             const oI = timeToMinutes(o.horaInicio);
             const oF = timeToMinutes(o.horaFin);
             if (intervalTraslape(hI, hF, oI, oF)) {
-              alert(`La actividad se traslapa con otra. Se eliminará esta entrada.`);
-              // elimina la actividad editada
+              alert("Se traslapa con otra actividad. Se eliminará.");
               return { ...prev, [dia]: actividades.filter((_, k) => k !== idx) };
             }
           }
         }
       }
+
+      // Validar contra campos fijos
+      const extras = extrasPorDia[dia];
+      for (let { key } of camposFijos) {
+        if (key.endsWith("Inicio")) {
+          const ini = extras[key];
+          const fin = extras[key.replace("Inicio", "Fin")];
+          if (/^\d{2}:\d{2}$/.test(ini) && /^\d{2}:\d{2}$/.test(fin)) {
+            const iniV = timeToMinutes(ini);
+            const finV = timeToMinutes(fin);
+            if (intervalTraslape(hI, hF, iniV, finV)) {
+              alert("Se traslapa con una actividad fija. Se eliminará.");
+              return { ...prev, [dia]: actividades.filter((_, k) => k !== idx) };
+            }
+          }
+        }
+      }
+
+      // Dormirse vs materias
+      const despertar = extras.despertarse;
+      const dormir = extras.dormirse;
+      if (/^\d{2}:\d{2}$/.test(dormir) && /^\d{2}:\d{2}$/.test(despertar)) {
+        const dI = timeToMinutes(dormir);
+        const dF = timeToMinutes(despertar);
+        if (intervalTraslape(hI, hF, dI, dF)) {
+          alert("Se traslapa con el tiempo de dormir. Se eliminará.");
+          return { ...prev, [dia]: actividades.filter((_, k) => k !== idx) };
+        }
+      }
     }
+
     return { ...prev, [dia]: actividades };
   });
 };
+
 
 // Validación y manejo de horarios al editar campos fijos
 const manejarCambioFijo = (dia, key, valor) => {
@@ -378,6 +449,39 @@ const manejarCambioFijo = (dia, key, valor) => {
   });
 };
 
+// Solo actualiza el estado sin validar
+const manejarCambioFijoSinValidar = (dia, key, valor) => {
+  setExtrasPorDia(prev => ({
+    ...prev,
+    [dia]: {
+      ...prev[dia],
+      [key]: valor
+    }
+  }));
+};
+
+// Llama a la validación completa después de terminar (blur)
+const manejarCambioFijoConValidacion = (dia, key, valor) => {
+  if (!/^\d{2}:\d{2}$/.test(valor)) return; // no validar si el valor es incompleto
+  manejarCambioFijo(dia, key, valor); // aquí usas tu validación original
+};
+
+
+// Manejo para copiar horario desde otro día
+const copiarHorarioDesde = (diaDestino, diaOrigen) => {
+  if (!datos[diaOrigen] || !extrasPorDia[diaOrigen]) return;
+
+  setDatos(prev => ({
+    ...prev,
+    [diaDestino]: JSON.parse(JSON.stringify(prev[diaOrigen]))
+  }));
+
+  setExtrasPorDia(prev => ({
+    ...prev,
+    [diaDestino]: { ...prev[diaOrigen] }
+  }));
+
+};
 
   // VALIDACIÓN AL GUARDAR
   const handleSubmit = async (e) => {
@@ -646,6 +750,34 @@ const manejarCambioFijo = (dia, key, valor) => {
         <fieldset key={dia} style={{ border: "1px solid #bbb", marginBottom: 28, borderRadius: 9, padding: 18 }}>
           <legend style={{ fontWeight: "bold", fontSize: 18 }}>{dia}</legend>
 
+          <div style={{ marginBottom: 16 }}>
+            <label htmlFor={`copiar-${dia}`} style={{ fontWeight: "bold", marginRight: 8 }}>
+              Copiar horario de:
+            </label>
+            <select
+              id={`copiar-${dia}`}
+              value={copiarDesde[dia]}
+              onChange={e => {
+                const seleccionado = e.target.value;
+                setCopiarDesde(prev => ({ ...prev, [dia]: seleccionado }));
+                if (seleccionado !== "none") {
+                  copiarHorarioDesde(dia, seleccionado);
+                }
+              }}
+              style={{ padding: "6px", fontSize: "14px" }}
+              className="border border-gray-300 rounded p-5 cursor-pointer"
+            >
+              <option value="none">-- Ninguno --</option>
+              {dias
+                .filter(d => d !== dia)
+                .map(d => (
+                  <option value={d} key={d}>
+                    {d}
+                  </option>
+                ))}
+            </select>
+          </div>
+
           {/* Campos fijos */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginBottom: 16 }}>
             {camposFijos.map(({ key, label }) => (
@@ -655,7 +787,9 @@ const manejarCambioFijo = (dia, key, valor) => {
                   type="time"
                   id={`${dia}-${key}`}
                   value={extrasPorDia[dia][key]}
-                  onChange={e => manejarCambioFijo(dia, key, e.target.value)}
+                  // onChange={e => manejarCambioFijo(dia, key, e.target.value)}
+                  onChange={e => manejarCambioFijoSinValidar(dia, key, e.target.value)}
+                  onBlur={e => manejarCambioFijoConValidacion(dia, key, e.target.value)}
                   style={{ width: "100%", padding: "6px", fontSize: "14px" }}
                   required
                 />
