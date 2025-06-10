@@ -6,6 +6,7 @@ export default function HourSlot({
   actividades = [],
 }) {
   const [actividadSeleccionada, setActividadSeleccionada] = useState(null);
+  // console.log('Actividades en HourSlot:', actividades);
 
   const getActivityStyles = (actividad) => {
     const baseStyles =
@@ -32,10 +33,12 @@ export default function HourSlot({
       default: '○',
     };
 
-    return actividad.completada ? '✅' : (icons[actividad.tipo] || icons.default);
+    return actividad.state ? '✅' : (icons[actividad.tipo] || icons.default);
   };
 
   const displayHora = hora.split(':')[0] + ':00';
+
+  // console.log('estado del hour slot', actividadSeleccionada.state);
 
   return (
     <div className="flex flex-col items-center gap-2 relative group w-full max-w-xs">
@@ -137,11 +140,12 @@ export default function HourSlot({
                 <strong>Descripción:</strong> {actividadSeleccionada.descripcion || 'Sin descripción'}
               </p>
 
-              {actividadSeleccionada.completada !== undefined && (
+              <p className="text-sm text-gray-700"><strong>state:</strong>  {actividadSeleccionada.state}</p>
+              {actividadSeleccionada.state !== undefined && (
                 <p className={`text-sm font-medium ${
-                  actividadSeleccionada.completada ? 'text-green-600' : 'text-yellow-600'
+                  actividadSeleccionada.state ? 'text-green-600' : 'text-yellow-600'
                 }`}>
-                  {actividadSeleccionada.completada ? '✅ Tarea completada' : '🟡 Pendiente'}
+                  {actividadSeleccionada.state ? '✅ Tarea completada' : '🟡 Pendiente'}
                 </p>
               )}
             </div>

@@ -48,7 +48,7 @@ export default function HomePage() {
       };
       
       await subirTarea(userId, tarea);
-      setProximas(prev => [{ ...tarea, id: Date.now(), completada: false }, ...prev]);
+      setProximas(prev => [{ ...tarea, id: Date.now() }, ...prev]);
       setNuevaActividad({ 
         titulo: '', 
         descripcion: '', 
@@ -71,6 +71,33 @@ export default function HomePage() {
     await eliminarTarea(userId, selectedTask.titulo);
     setProximas(prev => prev.filter(t => t.id !== selectedTask.id));
   };
+
+  const marcarActividadComoCompletada = async (id) => {
+    const userId = auth.currentUser?.uid;
+    if (!userId) return alert("No hay usuario autenticado");
+
+    const actividad = proximas.find(a => a.id === id);
+    if (!actividad) return;
+
+    const tareaActualizada = {
+      ...actividad,
+      state: true,
+      // fechaCompleta: `${actividad.fecha}T${actividad.hora || '23:59'}:00`,
+    };
+
+    try {
+      await subirTarea(userId, tareaActualizada);
+
+      // Actualizar en el frontend
+      setProximas(prev =>
+        prev.map(t => t.id === id ? { ...t, state: true } : t)
+      );
+    } catch (e) {
+      console.error('Error al marcar como completada:', e);
+      alert('Hubo un error al actualizar la actividad');
+    }
+  };
+
 
   if (cargando) return <Loading />;
 
@@ -95,7 +122,12 @@ export default function HomePage() {
         <h2 className="text-xl font-semibold mb-4">Tareas o actividades próximas</h2>
         <div className="space-y-4">
           {proximas.map(a => (
-            <ActivityCard key={a.id} actividad={a} onMarcarCompletada={(id) => setProximas(p => p.map(t => t.id === id ? { ...t, completada: true } : t))} />
+            // <ActivityCard key={a.id} actividad={a} onMarcarCompletada={(id) => setProximas(p => p.map(t => t.id === id ? { ...t} : t))} />
+            <ActivityCard
+              key={a.id}
+              actividad={a}
+              onMarcarCompletada={marcarActividadComoCompletada}
+            />
           ))}
         </div>
       </section>

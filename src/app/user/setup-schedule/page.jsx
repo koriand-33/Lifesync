@@ -7,10 +7,12 @@ import { auth } from "../../../../conexion_BD/firebase";
 import { bajarHorario } from "@/services/bajarHorario";
 import HorarioForms from "@/component/user/schedule/HorarioForms";
 import Loading from "@/component/loading/loading";
+import { signOut } from "firebase/auth";
 
 export default function SetupSchedulePage() {
   const [horarioExistente, setHorarioExistente] = useState(null);
   const [cargando, setCargando] = useState(true);
+  
   const router = useRouter();
 
   useEffect(() => {
@@ -54,10 +56,32 @@ export default function SetupSchedulePage() {
 
   const closeModal = () => false;
 
+  const cerrarSesion = () => {
+    signOut(auth)
+      .then(() => {
+        console.log("Sesión cerrada");
+        router.push("/session");
+      })
+      .catch((error) => {
+        console.error("Error al cerrar sesión:", error);
+      });
+  };
+
   if (cargando) return <Loading />;
 
   return (
     <div className="flex flex-col items-center justify-center">
+      <div className="w-full flex justify-end mr-24 mt-10">
+        <div className="flex">
+          <button
+            onClick={cerrarSesion}
+            className="flex justify-center items-center w-full px-4 py-2.5 text-sm rounded font-bold text-white bg-primary transition-colors cursor-pointer"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+      
       <h2 className="my-9 font-bold text-2xl">Por favor ingresa tu horario</h2>
       <div className="w-screen">
         <HorarioForms

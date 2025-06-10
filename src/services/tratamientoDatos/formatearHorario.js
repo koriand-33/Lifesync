@@ -36,6 +36,7 @@ export function generarFormatoFinal(datosEnviados, respuestaAPI, tareas = []) {
   const tareasConDone = {};
 
   for (const tarea of tareasApi || []) {
+
     const tareaLocal = tareas.find(t =>
       t.titulo?.trim().toLowerCase() === tarea.descripcion?.trim().toLowerCase()
     );
@@ -49,10 +50,12 @@ export function generarFormatoFinal(datosEnviados, respuestaAPI, tareas = []) {
 
     tareasConDone[tareaLocal.titulo] = {
       ...tareaLocal,
+      descripcion: tareaLocal.descripcion,
       duracion: tarea.tiempoDuracion,
       fecha: convertirFechaAFirebase(tareaLocal.fecha),
       fechaCompleta: convertirFechaAFirebase(tareaLocal.fechaCompleta),
       done: tarea.done,
+      state: tareaLocal.state || false,
       color: materiaColor || '#cccccc'
     };
   }

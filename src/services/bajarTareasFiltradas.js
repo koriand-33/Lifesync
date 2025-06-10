@@ -17,15 +17,17 @@ import { bajarTareas } from "./bajarTareas";
  */
 export const bajarTareasFiltradas = async (userId) => {
   const todasLasTareas = await bajarTareas(userId);
-
+  console.log("Todas las tareas:", todasLasTareas);
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0); // Normaliza a inicio del día
 
   const tareasFiltradas = todasLasTareas.filter(tarea => {
     const fechaTarea = new Date(tarea.fechaCompleta);
-    fechaTarea.setHours(0, 0, 0, 0); // Normaliza también
-    return fechaTarea >= hoy && tarea.done === false;
+    fechaTarea.setHours(0, 0, 0, 0); 
+    return fechaTarea > hoy && tarea.state === false;
   });
+
+  console.log("Tareas despues del filtro filtradas:", tareasFiltradas);
 
   return tareasFiltradas;
 };

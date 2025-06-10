@@ -1,5 +1,6 @@
 "use client";
-import { useRouter } from "next/navigation";
+
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../conexion_BD/firebase";
@@ -7,6 +8,7 @@ import { bajarHorario } from "@/services/bajarHorario";
 
 export function useProteccionUsuario() {
   const router = useRouter();
+  const pathname = usePathname();
   const [cargando, setCargando] = useState(true);
   const [usuario, setUsuario] = useState(null);
 
@@ -14,17 +16,15 @@ export function useProteccionUsuario() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
         router.replace("/session");
-        setCargando(false);
         return;
       }
 
-      setUsuario(user); // Guarda usuario temporalmente
+      setUsuario(user); 
     });
 
     return () => unsubscribe();
   }, [router]);
 
-  // Segunda parte: cuando tenemos usuario, verificamos su horario
   useEffect(() => {
     const verificarHorario = async () => {
       if (!usuario) return;
@@ -46,13 +46,17 @@ export function useProteccionUsuario() {
         const tieneHorario = !isHorarioVacio(horario);
         console.log("Desde proteccion TieneHorario:", tieneHorario);
 
-        if (!tieneHorario && window.location.pathname !== "/user/setup-schedule") {
+        if (!tieneHorario && pathname !== "/user/setup-schedule") {
           router.replace("/user/setup-schedule");
-        } else if (tieneHorario && window.location.pathname === "/user/setup-schedule") {
-          router.replace("/user/home");
-        } else {
-          setCargando(false);
+          return;
         }
+
+        if (tieneHorario && pathname === "/user/setup-schedule") {
+          router.replace("/user/home");
+          return;
+        }
+
+        setCargando(false);
       } catch (error) {
         console.error("Error al verificar horario:", error);
         setCargando(false);
@@ -60,7 +64,7 @@ export function useProteccionUsuario() {
     };
 
     verificarHorario();
-  }, [usuario, router]);
+  }, [usuario, pathname, router]);
 
   return { cargando, usuario };
 }

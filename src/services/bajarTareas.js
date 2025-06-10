@@ -47,6 +47,7 @@ export const bajarTareas = async (userId) => {
         duracion,
         dificultad,
         done: tarea.done || false,
+        state: tarea.state || false,
       };
     });
 

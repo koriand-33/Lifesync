@@ -3,6 +3,7 @@ import { subirTarea } from '@/services/subirTarea';
 import { eliminarTarea } from '@/services/eliminarTarea';
 import { auth } from '../../../../conexion_BD/firebase';
 import { format } from 'date-fns';
+import { XIcon } from 'lucide-react';
 
 const ModalForm = ({ date, event, onClose, onSave, onDelete, materias }) => {
 
@@ -10,6 +11,18 @@ const ModalForm = ({ date, event, onClose, onSave, onDelete, materias }) => {
     console.log("Datos completos del evento:", event);
     console.log("Hora recibida:", event?.hora, "| Hora en extendedProps:", event?.extendedProps?.hora);
   }, [event]);
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  // console.log("state recivido:", event?.extendedProps?.state );
+  const esSoloLectura = event?.extendedProps?.state === true;
+  // console.log("Es solo lectura:", esSoloLectura);
   
   const normalizeEventDate = (event) => {
     if (!event) return { date: '', time: '' };
@@ -90,8 +103,8 @@ const guardarNuevaActividad = async () => {
     fecha: nuevaActividad.fecha,
     hora: horaEntrega, 
     fechaCompleta: `${nuevaActividad.fecha}T${horaEntrega}:00`,
-    duracion: parseInt(nuevaActividad.duracion), // Ahora siempre tiene valor
-    dificultad: parseInt(nuevaActividad.dificultad) // Ahora siempre tiene valor
+    duracion: parseInt(nuevaActividad.duracion), 
+    dificultad: parseInt(nuevaActividad.dificultad) 
   };
 
   await subirTarea(userId, tarea);
@@ -99,17 +112,81 @@ const guardarNuevaActividad = async () => {
   onClose();
 };
 
+const completarActividad = async () => {
+const userId = auth.currentUser?.uid;
+  if (!userId) return alert("No hay usuario autenticado");
+
+  // Validación de campos requeridos
+  if (!nuevaActividad.titulo.trim()) {
+    return alert('El título es requerido');
+  }
+
+  if (!nuevaActividad.fecha) {
+    return alert('La fecha es requerida');
+  }
+
+  if (!nuevaActividad.duracion) {
+    return alert('La duración estimada es requerida');
+  }
+
+  if (!nuevaActividad.dificultad) {
+    return alert('La dificultad es requerida');
+  }
+
+  // Validación de valores numéricos
+  if (isNaN(nuevaActividad.duracion) || parseInt(nuevaActividad.duracion) <= 0) {
+    return alert('La duración debe ser un número positivo');
+  }
+
+  if (isNaN(nuevaActividad.dificultad) || 
+      parseInt(nuevaActividad.dificultad) < 1 || 
+      parseInt(nuevaActividad.dificultad) > 10) {
+    return alert('La dificultad debe estar entre 1 y 10');
+  }
+
+  // Si no hay hora especificada, usar 23:59 como default
+  const horaEntrega = nuevaActividad.hora || '23:59';
+  
+  const tarea = {
+    titulo: nuevaActividad.titulo,
+    descripcion: nuevaActividad.descripcion,
+    materia: nuevaActividad.materia || 'Evento',
+    fecha: nuevaActividad.fecha,
+    hora: horaEntrega, 
+    fechaCompleta: `${nuevaActividad.fecha}T${horaEntrega}:00`,
+    duracion: parseInt(nuevaActividad.duracion), 
+    dificultad: parseInt(nuevaActividad.dificultad),
+    state: true
+  };
+
+  console.log("Tarea a completar:", tarea);
+
+  await subirTarea(userId, tarea);
+  onSave?.(tarea);
+  onClose();
+}
+
+
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-md p-8 w-[90%] max-w-md">
-        <div className='w-full flex justify-end'>
-          {event && (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-auto"
+      onClick={onClose} 
+    >
+      <div 
+        className="bg-white rounded-xl shadow-md p-8 w-[90%] max-w-md"
+        onClick={(e) => e.stopPropagation()} 
+      >
+{/* Botones de Eliminar y cerrar */}
+        <div className='flex '>
+          {/* Boton de eliminar */}
+          <div className='w-full flex justify-start'>
+            {!esSoloLectura && (
               <button
                 onClick={async () => {
                   const userId = auth.currentUser?.uid;
                   if (!userId) return alert("No hay usuario autenticado");
 
-                  // Usa event.title que debería contener el nombre exacto de Firebase
                   await eliminarTarea(userId, event.title); 
                   onDelete?.();
                   onClose();
@@ -119,7 +196,22 @@ const guardarNuevaActividad = async () => {
                 Eliminar
               </button>
             )}
+          </div>
+
+          {/* Boton de cerrar */}
+          <div className=' w-full flex justify-end'>
+            <button
+              onClick={onClose}
+              className="mr-5text-xl font-bold"
+              aria-label="Cerrar modal"
+            >
+              <XIcon className="w-6 h-6  text-black hover:text-gray-500" />
+            </button>
+          </div>
         </div>
+
+
+{/* titulo y forms */}
         <h2 className="text-xl font-bold mb-4 flex justify-center items-center">
           {event ? 'Editar actividad' : 'Nueva actividad'}
         </h2>
@@ -135,6 +227,7 @@ const guardarNuevaActividad = async () => {
           onChange={e => handleInputNueva("titulo", e.target.value)}
           className="border rounded w-full px-3 py-2 mb-3"
           placeholder="Título"
+          readOnly={esSoloLectura}
         />
 
         <label className="text-sm font-medium mb-1 block">Materia</label>
@@ -142,6 +235,7 @@ const guardarNuevaActividad = async () => {
           value={nuevaActividad.materia}
           onChange={e => handleInputNueva("materia", e.target.value)}
           className="border rounded w-full px-3 py-2 mb-3"
+          disabled={esSoloLectura}
         >
           <option value="">Selecciona una materia</option>
           {Object.keys(materias).map(materia => (
@@ -157,6 +251,7 @@ const guardarNuevaActividad = async () => {
           className="border rounded w-full px-3 py-2 mb-3"
           placeholder="Descripción"
           rows={3}
+          readOnly={esSoloLectura}
         />
 
         <div className="grid grid-cols-2 gap-4 mb-4">
@@ -167,6 +262,7 @@ const guardarNuevaActividad = async () => {
               value={nuevaActividad.fecha}
               onChange={e => handleInputNueva("fecha", e.target.value)}
               className="border rounded w-full px-3 py-2 mt-1"
+              readOnly={esSoloLectura}
             />
           </div>
           
@@ -177,6 +273,7 @@ const guardarNuevaActividad = async () => {
               value={nuevaActividad.hora}
               onChange={e => handleInputNueva("hora", e.target.value)}
               className="border rounded w-full px-3 py-2 mt-1"
+              readOnly={esSoloLectura}
             />
             <p className="text-xs text-gray-500 mt-1">Si no especificas hora, se usará 23:59</p>
           </div>
@@ -193,6 +290,7 @@ const guardarNuevaActividad = async () => {
               onChange={e => handleInputNueva("duracion", e.target.value)}
               className="border rounded w-full px-3 py-2 mt-1"
               placeholder="Ej. 60"
+              readOnly={esSoloLectura}
             />
           </div>
           
@@ -202,6 +300,7 @@ const guardarNuevaActividad = async () => {
               value={nuevaActividad.dificultad}
               onChange={e => handleInputNueva("dificultad", e.target.value)}
               className="border rounded w-full px-3 py-2 mt-1"
+              disabled={esSoloLectura}
             >
               <option value="">Seleccionar</option>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
@@ -214,6 +313,11 @@ const guardarNuevaActividad = async () => {
           </div>
         </div>
 
+        {esSoloLectura ? (
+          <div className="text-center mt-4">
+            <span className="text-green-700 font-semibold">✓ Actividad completada</span>
+          </div>
+        ) : (
         <div className='flex gap-3 justify-between'>
           <button
             onClick={guardarNuevaActividad}
@@ -222,6 +326,15 @@ const guardarNuevaActividad = async () => {
             {event ? 'Guardar cambios' : 'Agregar'}
           </button>
 
+          {event &&(
+            <button
+              onClick={completarActividad}
+              className="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700"
+            >
+              Completado
+            </button>
+          )}
+
           <button
             onClick={onClose}
             className="border-gray-400 border text-gray-700 px-4 py-2 rounded hover:bg-gray-100"
@@ -229,6 +342,8 @@ const guardarNuevaActividad = async () => {
             Cancelar
           </button>
         </div>
+        )}
+
       </div>
     </div>
   );

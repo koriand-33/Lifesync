@@ -1,6 +1,7 @@
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../conexion_BD/firebase";
 import { procesarHorarioYEnviarAPI } from "./HorarioAPI";
+import { mostrarOverlayCarga, ocultarOverlayCarga} from "../utils/overlayCarga"
 
 /**
  * Sube el horario del usuario a Firebase
@@ -32,7 +33,9 @@ export const subirHorario = async (userId, materias, clases, extras, extrasAgrup
 
 
     console.log("Horario subido correctamente");
+    mostrarOverlayCarga();
     const { datosEnviados, respuestaAPI } = await procesarHorarioYEnviarAPI(userId);
+    ocultarOverlayCarga(); 
   } catch (error) {
     console.error("Error al subir el horario:", error);
     throw error;

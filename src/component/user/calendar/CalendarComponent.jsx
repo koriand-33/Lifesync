@@ -31,15 +31,28 @@ const CalendarView = () => {
     0: "Dom", 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie", 6: "Sáb"
   };
 
+    // const diaNombreToIndex = {
+    // "Dom": 0,
+    // "Lun": 1,
+    // "Mar": 2,
+    // "Mié": 3,
+    // "Jue": 4,
+    // "Vie": 5,
+    // "Sáb": 6
+    // };
     const diaNombreToIndex = {
-    "Dom": 0,
-    "Lun": 1,
-    "Mar": 2,
-    "Mié": 3,
-    "Jue": 4,
-    "Vie": 5,
-    "Sáb": 6
+      "Dom": 0, "Domingo": 0,
+      "Lun": 1, "Lunes": 1,
+      "Mar": 2, "Martes": 2,
+      "Mié": 3, "Miercoles": 3, "Miércoles": 3,
+      "Jue": 4, "Jueves": 4,
+      "Vie": 5, "Viernes": 5,
+      "Sáb": 6, "Sabado": 6, "Sábado": 6
     };
+  const normalizarDia = (diaConSufijo) => {
+    // Extrae solo la parte antes del guion bajo: "Lun_p" → "Lun"
+    return diaConSufijo.split('_')[0];
+  };
 
   useEffect(() => {
     if (!horarioExistente) return;
@@ -51,14 +64,80 @@ const CalendarView = () => {
     const fechaFin = new Date(fechaActual.getFullYear() + 1, 11, 31);
 
     let semana = 0;
+    // while (true) {
+    //   const lunesDeSemana = getStartOfWeek(semana);
+    //   if (lunesDeSemana > fechaFin) break;
+
+    //   // Clases
+    //   Object.entries(clases).forEach(([dia, eventos]) => {
+    //     eventos.forEach(({ horaInicio, horaFin, materia }) => {
+    //       const diaIndex = diaNombreToIndex[dia];
+    //       const fecha = nextWeekdayDate(diaIndex, semana);
+    //       calendarEvents.push({
+    //         title: materia,
+    //         start: `${fecha}T${horaInicio}`,
+    //         end: `${fecha}T${horaFin}`,
+    //         color: materias[materia]?.color || '#999',
+    //         extendedProps: {
+    //           importancia: materias[materia]?.importancia || null,
+    //           tipo: 'clase',
+    //         }
+    //       });
+    //     });
+    //   });
+
+    //   // Extras
+    //   Object.entries(extras).forEach(([dia, eventos]) => {
+    //     eventos.forEach(({ inicio, fin, actividad }) => {
+    //       const diaIndex = diaNombreToIndex[dia];
+    //       const fecha = nextWeekdayDate(diaIndex, semana);
+    //       calendarEvents.push({
+    //         title: actividad,
+    //         start: `${fecha}T${inicio}`,
+    //         end: `${fecha}T${fin}`,
+    //         color: '#ccc',
+    //         extendedProps: {
+    //           tipo: 'extra',
+    //         }
+    //       });
+    //     });
+    //   });
+
+    //   // horarios_materias
+    //   Object.entries(horarioExistenteRecivido.horarios_materias || {}).forEach(([dia, eventos]) => {
+    //     eventos.forEach(({ horaInicio, horaFin, materia }) => {
+    //       const diaIndex = diaNombreToIndex[dia];
+    //       const fecha = nextWeekdayDate(diaIndex, semana);
+    //       calendarEvents.push({
+    //         title: materia,
+    //         start: `${fecha}T${horaInicio}`,
+    //         end: `${fecha}T${horaFin}`,
+    //         color: materias[materia]?.color || '#94de1d',
+    //         extendedProps: {
+    //           importancia: materias[materia]?.importancia || null,
+    //           tipo: 'estudio',
+    //         }
+    //       });
+    //     });
+    //   });
+
+    //   semana++;
+    // }
+
     while (true) {
       const lunesDeSemana = getStartOfWeek(semana);
       if (lunesDeSemana > fechaFin) break;
 
       // Clases
       Object.entries(clases).forEach(([dia, eventos]) => {
+        // const diaIndex = diaNombreToIndex[dia];
+        const diaIndex = diaNombreToIndex[normalizarDia(dia)];
+        if (diaIndex === undefined) {
+          console.warn(`❗ Día no válido en clases: "${dia}"`);
+          return;
+        }
+
         eventos.forEach(({ horaInicio, horaFin, materia }) => {
-          const diaIndex = diaNombreToIndex[dia];
           const fecha = nextWeekdayDate(diaIndex, semana);
           calendarEvents.push({
             title: materia,
@@ -75,8 +154,14 @@ const CalendarView = () => {
 
       // Extras
       Object.entries(extras).forEach(([dia, eventos]) => {
+        // const diaIndex = diaNombreToIndex[dia];
+        const diaIndex = diaNombreToIndex[normalizarDia(dia)];
+        if (diaIndex === undefined) {
+          console.warn(`❗ Día no válido en extras: "${dia}"`);
+          return;
+        }
+
         eventos.forEach(({ inicio, fin, actividad }) => {
-          const diaIndex = diaNombreToIndex[dia];
           const fecha = nextWeekdayDate(diaIndex, semana);
           calendarEvents.push({
             title: actividad,
@@ -92,8 +177,14 @@ const CalendarView = () => {
 
       // horarios_materias
       Object.entries(horarioExistenteRecivido.horarios_materias || {}).forEach(([dia, eventos]) => {
+        // const diaIndex = diaNombreToIndex[dia];
+        const diaIndex = diaNombreToIndex[normalizarDia(dia)];
+        if (diaIndex === undefined) {
+          console.warn(`❗ Día no válido en horarios_materias: "${dia}"`);
+          return;
+        }
+
         eventos.forEach(({ horaInicio, horaFin, materia }) => {
-          const diaIndex = diaNombreToIndex[dia];
           const fecha = nextWeekdayDate(diaIndex, semana);
           calendarEvents.push({
             title: materia,
@@ -112,7 +203,27 @@ const CalendarView = () => {
     }
 
     // Tareas del usuario
-    tareasUsuario.forEach(({ titulo, descripcion, fecha, materia, hora, duracion, dificultad }) => {
+    // tareasUsuario.forEach(({ titulo, descripcion, fecha, materia, hora, duracion, dificultad }) => {
+    //   calendarEvents.push({
+    //     title: titulo,
+    //     description: descripcion,
+    //     start: fecha,
+    //     allDay: true,
+    //     color: materias[materia]?.color || '#000',
+    //     extendedProps: {
+    //       materia,
+    //       hora: hora || '',
+    //       tipo: 'tarea',
+    //       description: descripcion,
+    //       duracion,
+    //       dificultad
+    //     }
+    //   });
+    // });
+    tareasUsuario.forEach((tarea) => {
+      const { titulo, descripcion, fecha, materia, hora, duracion, dificultad, done, state} = tarea;
+
+      // Evento principal (entrega final)
       calendarEvents.push({
         title: titulo,
         description: descripcion,
@@ -125,9 +236,30 @@ const CalendarView = () => {
           tipo: 'tarea',
           description: descripcion,
           duracion,
-          dificultad
+          dificultad,
+          state
         }
       });
+      console.log("Tarea procesada:", titulo, fecha, hora, duracion, dificultad, state);
+
+      // Agregar avances (done)
+      if (done && typeof done === 'object') {
+        Object.entries(done).forEach(([clave, { fecha: fechaDone, Duracion }]) => {
+          if (fechaDone) {
+            calendarEvents.push({
+              title: `Avance de "${titulo}"`,
+              start: `${fechaDone}T12:00:00`,
+              allDay: true,
+              color: materias[materia]?.color || '#000',
+              extendedProps: {
+                tipo: 'avance',
+                duracion: Duracion,
+                tareaPrincipal: titulo
+              }
+            });
+          }
+        });
+      }
     });
 
     setActivities(calendarEvents);
@@ -228,12 +360,35 @@ const CalendarView = () => {
         return monday;
         };
 
-        const nextWeekdayDate = (targetDay, weeksAhead = 0) => {
+        // const nextWeekdayDate = (targetDay, weeksAhead = 0) => {
+        // const monday = getStartOfWeek(weeksAhead);
+        // const date = new Date(monday);
+        // date.setDate(monday.getDate() + (targetDay - 1));
+        // return date.toISOString().split('T')[0];
+        // };
+    const nextWeekdayDate = (targetDay, weeksAhead = 0) => {
         const monday = getStartOfWeek(weeksAhead);
+        
+        if (!(monday instanceof Date) || isNaN(monday)) {
+            console.error('❌ getStartOfWeek returned an invalid date:', monday);
+            return null;
+        }
+
+        if (typeof targetDay !== 'number' || isNaN(targetDay)) {
+            console.error('❌ Invalid targetDay:', targetDay);
+            return null;
+        }
+
         const date = new Date(monday);
         date.setDate(monday.getDate() + (targetDay - 1));
+
+        if (isNaN(date)) {
+            console.error('❌ Computed invalid date:', date);
+            return null;
+        }
+
         return date.toISOString().split('T')[0];
-        };
+    };
 
     const handleDateClick = (arg) => {
         setSelectedDate(arg.dateStr);
@@ -244,7 +399,7 @@ const CalendarView = () => {
     const handleEventClick = (clickInfo) => {
       const tipo = clickInfo.event.extendedProps?.tipo;
 
-      if (tipo === 'clase' || tipo === 'extra' || tipo === 'estudio') {
+      if (tipo === 'clase' || tipo === 'extra' || tipo === 'estudio' || tipo === 'avance') {
         setSelectedEvent({
           title: clickInfo.event.title,
           start: clickInfo.event.startStr,
@@ -262,8 +417,9 @@ const CalendarView = () => {
           allDay: clickInfo.event.allDay,
           extendedProps: {
             ...clickInfo.event.extendedProps,
-            duracion: clickInfo.event.extendedProps?.duracion || '', // Nuevo campo
-            dificultad: clickInfo.event.extendedProps?.dificultad || '' // Nuevo campo
+            duracion: clickInfo.event.extendedProps?.duracion || '',
+            dificultad: clickInfo.event.extendedProps?.dificultad || '',
+            state: clickInfo.event.extendedProps?.state,
           }
         });
         setShowModal(true);
@@ -332,8 +488,9 @@ const CalendarView = () => {
             materia: selectedEvent?.extendedProps?.materia,
             description: selectedEvent?.extendedProps?.description,
             hora: selectedEvent?.hora,
-            duracion: selectedEvent?.extendedProps?.duracion, // Nuevo campo
-            dificultad: selectedEvent?.extendedProps?.dificultad // Nuevo campo
+            duracion: selectedEvent?.extendedProps?.duracion,
+            dificultad: selectedEvent?.extendedProps?.dificultad,
+            state: selectedEvent?.extendedProps?.state
           },
           hora: selectedEvent?.hora,
           allDay: selectedEvent?.allDay

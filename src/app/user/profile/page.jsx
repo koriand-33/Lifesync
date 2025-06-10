@@ -9,10 +9,13 @@ import {
     UserIcon,
     FireIcon,
 } from '@heroicons/react/24/outline'
+import { HelpCircle } from 'lucide-react'; 
 import { bajarInfoPerfil } from '@/services/bajarInfoPerfil';
 import Loading from '@/component/loading/loading';
 import { auth } from '../../../../conexion_BD/firebase';
 import { actualizarInfoPerfil } from '@/services/actualizarInfoPerfil';
+import { tareasCompletada } from '@/services/tareasCompletadas';
+import { calcularScore } from '@/services/calcularScore';
 
 const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
@@ -39,6 +42,8 @@ const ProfilePage = () => {
     location: '',
   });
   const [userInfoRef, setUserInfoRef] = useState();
+  const [tareasCompletadas, setTareasCompletadas] = useState(null);
+  const [score, setScore] = useState(0);
 
   // Lista de colores disponibles
   const colorOptions = [
@@ -76,6 +81,10 @@ const ProfilePage = () => {
             logros: datos.logros || null, // Asegurar que logros sea null si no existe
             clases: datos.clases || null  // Asegurar que clases sea null si no existe
           });
+          const tareas = await tareasCompletada(user.uid);
+          setTareasCompletadas(tareas);
+          const score = calcularScore(tareas);
+          setScore(score);
         }
       } catch (error) {
         console.error("Error cargando datos:", error);
@@ -91,6 +100,7 @@ const ProfilePage = () => {
   useEffect(() => {
     console.log("Datos del usuario:", userInfo);
     console.log("Referencia de datos del usuario:", userInfoRef);
+    console.log("Tareas completadas:", tareasCompletadas);
   }, [userInfo]);
 
   const logrosUI = userInfo.logros 
@@ -111,8 +121,8 @@ const ProfilePage = () => {
     },
     { 
       icon: Award, 
-      label: 'Logros', 
-      value: logrosUI.length // Usamos la longitud del array ya procesado
+      label: 'Score ', 
+      value: score || 0 
     },
     { 
       icon: FireIcon, 
@@ -416,14 +426,26 @@ if (loading) return <div><Loading/></div>;
                 <div className="p-3 rounded-full bg-purple-100">
                   <stat.icon className="w-6 h-6 text-purple-600" />
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">{stat.label}</p>
+                <div className="ml-4 relative">
+                  <div className="flex items-center gap-1">
+                    <p className="text-sm font-medium text-gray-600">{stat.label}</p>
+
+                    {stat.label.trim() === "Score" && (
+                      <div className="relative group">
+                        <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-pointer" />
+                        <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 w-max bg-black text-white text-xs rounded px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                          (dificultad × duración) × 10 por tarea
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
                 </div>
               </div>
             </div>
           ))}
         </div>
+
 
         {/* Profile Details */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

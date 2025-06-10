@@ -5,8 +5,18 @@ import { CalendarDays, Clock, Star } from 'lucide-react';
 const ModalDetalleEvento = ({ event, onClose }) => {
   const { title, start, end, color, extendedProps } = event;
 
-  const formatDate = (date) =>
-    format(new Date(date), "eeee dd MMMM yyyy, HH:mm");
+const formatDate = (date) => {
+  if (!date) return "Fecha inválida";
+
+  // Si viene sin hora (ej: "2025-06-10"), forzamos una hora neutra
+  const safeDate = typeof date === "string" && date.length === 10
+    ? new Date(`${date}T12:00:00`)
+    : new Date(date);
+
+  if (isNaN(safeDate)) return "Fecha inválida";
+
+  return format(safeDate, "eeee dd MMMM yyyy, HH:mm");
+};
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">

@@ -79,7 +79,8 @@ export function useHorarioOrganizado(horarioExistente, proximas) {
                     horaFin: t.hora,
                     color: '#f59e0b',
                     datosCompletos: t,
-                    horaExacta: t.hora
+                    horaExacta: t.hora,
+                    state: t.state
                 }))
             ];
 
