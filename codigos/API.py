@@ -14,6 +14,8 @@ from auxi import (
     asignar_horarios_estudio,
     mapeo_dias,
 )
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
 from statistics import mode
 import numpy as np
 import pandas as pd
@@ -38,7 +40,7 @@ for key in frecuencias.keys():
     frecuencias[key] = frecuencias[key] / suma
 
 n_df = nuevo_df(df, frecuencias)
-n_df["Semana"] = n_df.apply(
+n_df["Semana_l"] = n_df.apply(
     lambda x: mode(
         [
             x["Lunes"],
@@ -51,7 +53,24 @@ n_df["Semana"] = n_df.apply(
     axis=1,
 )
 
-n_df.drop(columns=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"], inplace=True)
+X = n_df.drop(columns=["Semana_l"])
+y = n_df["Semana_l"].apply(lambda x: str(x))
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+)
+
+classifier = KNeighborsClassifier(n_neighbors=5)
+classifier.fit(X_train, y_train)
+
+n_df["Semana"] = classifier.predict(X)
+n_df["Semana"] = n_df["Semana"].astype(float)
+
+n_df.drop(
+    columns=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Semana_l"],
+    inplace=True,
+)
 
 tiempo_efectivo = {
     "8.5": n_df[n_df["Semana"] == 8.5]["Tiempo al día"].mean(),
