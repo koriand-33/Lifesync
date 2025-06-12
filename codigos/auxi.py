@@ -1,4 +1,4 @@
-from sklearn.neighbors import KNeighborsRegressor
+from sklearn.neighbors import KNeighborsRegressor, KNeighborsClassifier
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -1404,17 +1404,40 @@ def etiquetar(df, tiempo_efectivo):
     return n_df
 
 
-def predecir_individuo(tiempo: float, materias: dict, dias: dict, modelosKnn: KNNModel):
-    semana = mode(dias.values())
+mapeo_dias_2 = {
+    "Lun": "Lunes",
+    "Mar": "Martes",
+    "Mié": "Miércoles",
+    "Jue": "Jueves",
+    "Vie": "Viernes",
+}
+
+
+def predecir_individuo(
+    tiempo: float,
+    materias: dict,
+    dias: dict,
+    modelosKnn: KNNModel,
+    modelo: KNeighborsClassifier,
+):
+    dias_n = {
+        nuevo_nombre: dias[clave]
+        for clave, nuevo_nombre in mapeo_dias_2.items()
+        if clave in dias
+    }
     predicciones = {}
-    X = np.array(list(materias.values()) + [tiempo] + [semana])
-    columnas = list(materias.keys()) + [
-        "Tiempo al día",
-        "Semana",
-    ]
+    X = np.array(list(materias.values()) + list(dias_n.values()) + [tiempo])
+    columnas = (
+        list(materias.keys())
+        + list(dias_n.keys())
+        + [
+            "Tiempo al día",
+        ]
+    )
     X_df = pd.DataFrame([X], columns=columnas)
+    X_df["Semana"] = modelo.predict(X_df).astype(float)
+    X_df.drop(columns=list(dias_n.keys()), inplace=True)
     X_df = pd.DataFrame(modelosKnn.scaler.transform(X_df), columns=X_df.columns)
     for model in modelosKnn.models.keys():
-
         predicciones[model] = modelosKnn.predict(model, X_df) * 5
     return predicciones

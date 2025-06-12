@@ -109,6 +109,7 @@ def predecir():
             tiempo_libre_por_dia["materias"],
             tiempo_libre_por_dia["momento_mas_libre"],
             modelosKnn,
+            modelo=classifier,
         )
         horarios = asignar_horarios_estudio(
             materias,
