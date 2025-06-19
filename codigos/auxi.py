@@ -1435,6 +1435,7 @@ def predecir_individuo(
         ]
     )
     X_df = pd.DataFrame([X], columns=columnas)
+    print(X_df.columns)
     X_df["Semana"] = modelo.predict(X_df).astype(float)
     X_df.drop(columns=list(dias_n.keys()), inplace=True)
     X_df = pd.DataFrame(modelosKnn.scaler.transform(X_df), columns=X_df.columns)
